@@ -245,7 +245,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				],
 				stream: true,
 				stream_options: { include_usage: true },
-				reasoning_effort: this.getModel().info.reasoningEffort,
+				reasoning_effort: this.getChatReasoningEffort(),
 			})
 
 			yield* this.handleStreamResponse(stream)
@@ -289,6 +289,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				}
 			}
 		}
+	}
+
+	private getChatReasoningEffort(): OpenAI.Chat.ChatCompletionReasoningEffort | undefined {
+		return this.getModel().info.reasoningEffort as OpenAI.Chat.ChatCompletionReasoningEffort | undefined
 	}
 }
 
