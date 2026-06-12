@@ -61,7 +61,7 @@ describe("XAIHandler", () => {
 	})
 
 	test("should return specified model when valid model is provided", () => {
-		const testModelId = "grok-2-latest"
+		const testModelId = "grok-build-0.1"
 		const handlerWithModel = new XAIHandler({ apiModelId: testModelId })
 		const model = handlerWithModel.getModel()
 
@@ -69,9 +69,9 @@ describe("XAIHandler", () => {
 		expect(model.info).toEqual(xaiModels[testModelId])
 	})
 
-	test("should include reasoning_effort parameter for mini models", async () => {
-		const miniModelHandler = new XAIHandler({
-			apiModelId: "grok-3-mini-beta",
+	test("should include reasoning_effort parameter for Grok 4.3", async () => {
+		const reasoningModelHandler = new XAIHandler({
+			apiModelId: "grok-4.3",
 			reasoningEffort: "high",
 		})
 
@@ -87,7 +87,7 @@ describe("XAIHandler", () => {
 		})
 
 		// Start generating a message
-		const messageGenerator = miniModelHandler.createMessage("test prompt", [])
+		const messageGenerator = reasoningModelHandler.createMessage("test prompt", [])
 		await messageGenerator.next() // Start the generator
 
 		// Check that reasoning_effort was included
@@ -98,9 +98,9 @@ describe("XAIHandler", () => {
 		)
 	})
 
-	test("should not include reasoning_effort parameter for non-mini models", async () => {
+	test("should not include reasoning_effort parameter for non-reasoning models", async () => {
 		const regularModelHandler = new XAIHandler({
-			apiModelId: "grok-2-latest",
+			apiModelId: "grok-build-0.1",
 			reasoningEffort: "high",
 		})
 
@@ -254,7 +254,7 @@ describe("XAIHandler", () => {
 
 	test("createMessage should pass correct parameters to OpenAI client", async () => {
 		// Setup a handler with specific model
-		const modelId = "grok-2-latest"
+		const modelId = "grok-build-0.1"
 		const modelInfo = xaiModels[modelId]
 		const handlerWithModel = new XAIHandler({ apiModelId: modelId })
 

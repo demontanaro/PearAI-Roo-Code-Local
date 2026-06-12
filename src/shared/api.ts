@@ -1316,10 +1316,28 @@ export const unboundDefaultModelInfo: ModelInfo = {
 }
 
 // xAI
-// https://docs.x.ai/docs/api-reference
+// https://docs.x.ai/developers/models
 export type XAIModelId = keyof typeof xaiModels
-export const xaiDefaultModelId: XAIModelId = "grok-3-beta"
+export const xaiDefaultModelId: XAIModelId = "grok-4.3"
 export const xaiModels = {
+	"grok-4.3": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.25,
+		outputPrice: 2.5,
+		description: "xAI's current flagship chat model with configurable reasoning and a 1M context window.",
+	},
+	"grok-build-0.1": {
+		maxTokens: 8192,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.0,
+		outputPrice: 2.0,
+		description: "xAI's current fast coding model for agentic coding workflows.",
+	},
 	"grok-3-beta": {
 		maxTokens: 8192,
 		contextWindow: 131072,
@@ -1327,7 +1345,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 3.0,
 		outputPrice: 15.0,
-		description: "xAI's Grok-3 beta model with 131K context window",
+		description: "xAI's legacy Grok-3 beta alias.",
 	},
 	"grok-3-fast-beta": {
 		maxTokens: 8192,
@@ -1336,7 +1354,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 5.0,
 		outputPrice: 25.0,
-		description: "xAI's Grok-3 fast beta model with 131K context window",
+		description: "xAI's legacy Grok-3 fast beta alias.",
 	},
 	"grok-3-mini-beta": {
 		maxTokens: 8192,
@@ -1345,7 +1363,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 0.3,
 		outputPrice: 0.5,
-		description: "xAI's Grok-3 mini beta model with 131K context window",
+		description: "xAI's legacy Grok-3 mini beta alias.",
 	},
 	"grok-3-mini-fast-beta": {
 		maxTokens: 8192,
@@ -1354,7 +1372,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 0.6,
 		outputPrice: 4.0,
-		description: "xAI's Grok-3 mini fast beta model with 131K context window",
+		description: "xAI's legacy Grok-3 mini fast beta alias.",
 	},
 	"grok-2-latest": {
 		maxTokens: 8192,
@@ -1363,7 +1381,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 model - latest version with 131K context window",
+		description: "xAI's legacy Grok-2 latest alias.",
 	},
 	"grok-2": {
 		maxTokens: 8192,
@@ -1372,7 +1390,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 model with 131K context window",
+		description: "xAI's legacy Grok-2 alias.",
 	},
 	"grok-2-1212": {
 		maxTokens: 8192,
@@ -1381,7 +1399,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 model (version 1212) with 131K context window",
+		description: "xAI's legacy Grok-2 1212 alias.",
 	},
 	"grok-2-vision-latest": {
 		maxTokens: 8192,
@@ -1390,7 +1408,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 Vision model - latest version with image support and 32K context window",
+		description: "xAI's legacy Grok-2 Vision latest alias.",
 	},
 	"grok-2-vision": {
 		maxTokens: 8192,
@@ -1399,7 +1417,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 Vision model with image support and 32K context window",
+		description: "xAI's legacy Grok-2 Vision alias.",
 	},
 	"grok-2-vision-1212": {
 		maxTokens: 8192,
@@ -1408,7 +1426,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 2.0,
 		outputPrice: 10.0,
-		description: "xAI's Grok-2 Vision model (version 1212) with image support and 32K context window",
+		description: "xAI's legacy Grok-2 Vision 1212 alias.",
 	},
 	"grok-vision-beta": {
 		maxTokens: 8192,
@@ -1417,7 +1435,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 5.0,
 		outputPrice: 15.0,
-		description: "xAI's Grok Vision Beta model with image support and 8K context window",
+		description: "xAI's legacy Grok Vision beta alias.",
 	},
 	"grok-beta": {
 		maxTokens: 8192,
@@ -1426,7 +1444,7 @@ export const xaiModels = {
 		supportsPromptCache: false,
 		inputPrice: 5.0,
 		outputPrice: 15.0,
-		description: "xAI's Grok Beta model (legacy) with 131K context window",
+		description: "xAI's legacy Grok beta alias.",
 	},
 } as const satisfies Record<string, ModelInfo>
 
@@ -1618,7 +1636,12 @@ export const vscodeLlmModels = {
  */
 
 // These models support reasoning efforts.
-export const REASONING_MODELS = new Set(["x-ai/grok-3-mini-beta", "grok-3-mini-beta", "grok-3-mini-fast-beta"])
+export const REASONING_MODELS = new Set([
+	"grok-4.3",
+	"x-ai/grok-3-mini-beta",
+	"grok-3-mini-beta",
+	"grok-3-mini-fast-beta",
+])
 
 // These models support prompt caching.
 export const PROMPT_CACHING_MODELS = new Set([

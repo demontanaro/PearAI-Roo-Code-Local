@@ -13,7 +13,11 @@ const XAI_DEFAULT_TEMPERATURE = 0
 
 const toXAIReasoningEffort = (
 	effort?: ApiHandlerOptions["reasoningEffort"],
-): OpenAI.Chat.ChatCompletionReasoningEffort | undefined => {
+): OpenAI.Chat.ChatCompletionReasoningEffort | "none" | undefined => {
+	if (effort === "none") {
+		return "none"
+	}
+
 	if (effort === "low" || effort === "medium" || effort === "high") {
 		return effort
 	}
