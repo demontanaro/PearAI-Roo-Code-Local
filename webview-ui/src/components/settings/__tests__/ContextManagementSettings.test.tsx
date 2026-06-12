@@ -2,7 +2,7 @@
 
 import { render, screen, fireEvent } from "@testing-library/react"
 
-import { ContextManagementSettings } from "../ContextManagementSettings"
+import { ContextManagementSettings } from "@src/components/settings/ContextManagementSettings"
 
 class MockResizeObserver {
 	observe() {}
@@ -47,7 +47,7 @@ describe("ContextManagementSettings", () => {
 		const workspaceFilesSlider = screen.getByTestId("workspace-files-limit-slider")
 		expect(workspaceFilesSlider).toBeInTheDocument()
 
-		// Show .rooignore'd files
+		// Show .pearai-agent-ignore'd files
 		const showRooIgnoredFilesCheckbox = screen.getByTestId("show-rooignored-files-checkbox")
 		expect(showRooIgnoredFilesCheckbox).toBeInTheDocument()
 		expect(screen.getByTestId("show-rooignored-files-checkbox")).not.toBeChecked()

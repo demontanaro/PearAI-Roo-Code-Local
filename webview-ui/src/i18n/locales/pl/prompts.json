@@ -6,8 +6,8 @@
 		"createNewMode": "Utwórz nowy tryb",
 		"editModesConfig": "Edytuj konfigurację trybów",
 		"editGlobalModes": "Edytuj tryby globalne",
-		"editProjectModes": "Edytuj tryby projektu (.roomodes)",
-		"createModeHelpText": "Kliknij +, aby utworzyć nowy niestandardowy tryb, lub po prostu poproś Roo w czacie, aby utworzył go dla Ciebie!"
+		"editProjectModes": "Edytuj tryby projektu (.pearai-agent-ignore)",
+		"createModeHelpText": "Kliknij +, aby utworzyć nowy niestandardowy tryb, lub po prostu poproś Agent w czacie, aby utworzył go dla Ciebie!"
 	},
 	"apiConfiguration": {
 		"title": "Konfiguracja API",
@@ -25,23 +25,24 @@
 			"browser": "Używaj przeglądarki",
 			"command": "Uruchamiaj polecenia",
 			"mcp": "Używaj MCP"
-		}
+		},
+		"noTools": "Brak"
 	},
 	"roleDefinition": {
 		"title": "Definicja roli",
 		"resetToDefault": "Przywróć domyślne",
-		"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Roo dla tego trybu. Ten opis kształtuje, jak Roo prezentuje się i podchodzi do zadań."
+		"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Agent dla tego trybu. Ten opis kształtuje, jak Agent prezentuje się i podchodzi do zadań."
 	},
 	"customInstructions": {
 		"title": "Niestandardowe instrukcje dla trybu (opcjonalne)",
 		"resetToDefault": "Przywróć domyślne",
 		"description": "Dodaj wytyczne dotyczące zachowania specyficzne dla trybu {{modeName}}.",
-		"loadFromFile": "Niestandardowe instrukcje dla trybu {{modeName}} mogą być również ładowane z .clinerules-{{modeSlug}} w Twoim obszarze roboczym."
+		"loadFromFile": "Niestandardowe instrukcje dla trybu {{modeName}} mogą być również ładowane z folderu <span>.pearai-agent/rules-{{modeSlug}}/</span> w Twoim obszarze roboczym (.roorules-{{modeSlug}} i .clinerules-{{modeSlug}} są przestarzałe i wkrótce przestaną działać)."
 	},
 	"globalCustomInstructions": {
 		"title": "Niestandardowe instrukcje dla wszystkich trybów",
-		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej.\nJeśli chcesz, aby Roo myślał i mówił w języku innym niż język wyświetlania Twojego edytora ({{language}}), możesz to określić tutaj.",
-		"loadFromFile": "Instrukcje mogą być również ładowane z .clinerules w Twoim obszarze roboczym."
+		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej.\nJeśli chcesz, aby Agent myślał i mówił w języku innym niż język wyświetlania Twojego edytora ({{language}}), możesz to określić tutaj.",
+		"loadFromFile": "Instrukcje mogą być również ładowane z folderu <span>.pearai-agent/rules/</span> w Twoim obszarze roboczym (.roorules i .clinerules są przestarzałe i wkrótce przestaną działać)."
 	},
 	"systemPrompt": {
 		"preview": "Podgląd podpowiedzi systemowej",
@@ -62,7 +63,7 @@
 		"types": {
 			"ENHANCE": {
 				"label": "Ulepsz podpowiedź",
-				"description": "Użyj ulepszenia podpowiedzi, aby uzyskać dostosowane sugestie lub ulepszenia dla swoich danych wejściowych. Zapewnia to, że Roo rozumie Twoje intencje i dostarcza najlepsze możliwe odpowiedzi. Dostępne za pośrednictwem ikony ✨ w czacie."
+				"description": "Użyj ulepszenia podpowiedzi, aby uzyskać dostosowane sugestie lub ulepszenia dla swoich danych wejściowych. Zapewnia to, że Agent rozumie Twoje intencje i dostarcza najlepsze możliwe odpowiedzi. Dostępne za pośrednictwem ikony ✨ w czacie."
 			},
 			"EXPLAIN": {
 				"label": "Wyjaśnij kod",
@@ -91,16 +92,16 @@
 			"TERMINAL_EXPLAIN": {
 				"label": "Wyjaśnij polecenie terminala",
 				"description": "Uzyskaj szczegółowe wyjaśnienia poleceń terminala i ich wyników. Dostępne w menu kontekstowym terminala (prawy przycisk myszy na wybranej zawartości terminala)."
+			},
+			"NEW_TASK": {
+				"label": "Rozpocznij nowe zadanie",
+				"description": "Rozpocznij nowe zadanie z wprowadzonymi danymi. Dostępne w palecie poleceń."
 			}
 		}
 	},
-	"customModeCreation": {
-		"enableTitle": "Włącz tworzenie niestandardowych trybów przez podpowiedzi",
-		"description": "Gdy włączone, Roo pozwala na tworzenie niestandardowych trybów za pomocą podpowiedzi takich jak 'Stwórz dla mnie niestandardowy tryb, który...'. Wyłączenie tej opcji zmniejsza podpowiedź systemową o około 700 tokenów, gdy ta funkcja nie jest potrzebna. Po wyłączeniu nadal możesz ręcznie tworzyć niestandardowe tryby za pomocą przycisku + powyżej lub edytując powiązany plik konfiguracyjny JSON."
-	},
 	"advancedSystemPrompt": {
 		"title": "Zaawansowane: Zastąp podpowiedź systemową",
-		"description": "Możesz całkowicie zastąpić podpowiedź systemową dla tego trybu (oprócz definicji roli i niestandardowych instrukcji) poprzez utworzenie pliku w .roo/system-prompt-{{modeSlug}} w swoim obszarze roboczym. Jest to bardzo zaawansowana funkcja, która omija wbudowane zabezpieczenia i kontrole spójności (szczególnie wokół używania narzędzi), więc bądź ostrożny!"
+		"description": "Możesz całkowicie zastąpić podpowiedź systemową dla tego trybu (oprócz definicji roli i niestandardowych instrukcji) poprzez utworzenie pliku w .pearai-agent/system-prompt-{{modeSlug}} w swoim obszarze roboczym. Jest to bardzo zaawansowana funkcja, która omija wbudowane zabezpieczenia i kontrole spójności (szczególnie wokół używania narzędzi), więc bądź ostrożny!"
 	},
 	"createModeDialog": {
 		"title": "Utwórz nowy tryb",
@@ -121,13 +122,13 @@
 				"description": "Dostępny we wszystkich obszarach roboczych"
 			},
 			"project": {
-				"label": "Specyficzny dla projektu (.roomodes)",
+				"label": "Specyficzny dla projektu (.pearai-agent-ignore)",
 				"description": "Dostępny tylko w tym obszarze roboczym, ma pierwszeństwo przed globalnym"
 			}
 		},
 		"roleDefinition": {
 			"label": "Definicja roli",
-			"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Roo dla tego trybu."
+			"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Agent dla tego trybu."
 		},
 		"tools": {
 			"label": "Dostępne narzędzia",

@@ -6,8 +6,8 @@
 		"createNewMode": "Crear nou mode",
 		"editModesConfig": "Editar configuració de modes",
 		"editGlobalModes": "Editar modes globals",
-		"editProjectModes": "Editar modes de projecte (.roomodes)",
-		"createModeHelpText": "Feu clic a + per crear un nou mode personalitzat, o simplement demaneu a Roo al xat que en creï un per a vostè!"
+		"editProjectModes": "Editar modes de projecte (.pearai-agent-ignore)",
+		"createModeHelpText": "Feu clic a + per crear un nou mode personalitzat, o simplement demaneu a Agent al xat que en creï un per a vostè!"
 	},
 	"apiConfiguration": {
 		"title": "Configuració d'API",
@@ -25,23 +25,24 @@
 			"browser": "Utilitzar navegador",
 			"command": "Executar comandes",
 			"mcp": "Utilitzar MCP"
-		}
+		},
+		"noTools": "Cap"
 	},
 	"roleDefinition": {
 		"title": "Definició de rol",
 		"resetToDefault": "Restablir a valors predeterminats",
-		"description": "Definiu l'experiència i personalitat de Roo per a aquest mode. Aquesta descripció determina com Roo es presenta i aborda les tasques."
+		"description": "Definiu l'experiència i personalitat de Agent per a aquest mode. Aquesta descripció determina com Agent es presenta i aborda les tasques."
 	},
 	"customInstructions": {
 		"title": "Instruccions personalitzades específiques del mode (opcional)",
 		"resetToDefault": "Restablir a valors predeterminats",
 		"description": "Afegiu directrius de comportament específiques per al mode {{modeName}}.",
-		"loadFromFile": "Les instruccions personalitzades específiques per al mode {{mode}} també es poden carregar des de <span>.clinerules-{{slug}}</span> al vostre espai de treball."
+		"loadFromFile": "Les instruccions personalitzades específiques per al mode {{mode}} també es poden carregar des de la carpeta <span>.pearai-agent/rules-{{slug}}/</span> al vostre espai de treball (.roorules-{{slug}} i .clinerules-{{slug}} estan obsolets i deixaran de funcionar aviat)."
 	},
 	"globalCustomInstructions": {
 		"title": "Instruccions personalitzades per a tots els modes",
-		"description": "Aquestes instruccions s'apliquen a tots els modes. Proporcionen un conjunt bàsic de comportaments que es poden millorar amb instruccions específiques de cada mode a continuació.\nSi voleu que Roo pensi i parli en un idioma diferent al de la visualització del vostre editor ({{language}}), podeu especificar-ho aquí.",
-		"loadFromFile": "Les instruccions també es poden carregar des de <span>.clinerules</span> al vostre espai de treball."
+		"description": "Aquestes instruccions s'apliquen a tots els modes. Proporcionen un conjunt bàsic de comportaments que es poden millorar amb instruccions específiques de cada mode a continuació.\nSi voleu que Agent pensi i parli en un idioma diferent al de la visualització del vostre editor ({{language}}), podeu especificar-ho aquí.",
+		"loadFromFile": "Les instruccions també es poden carregar des de la carpeta <span>.pearai-agent/rules/</span> al vostre espai de treball (.roorules i .clinerules estan obsolets i deixaran de funcionar aviat)."
 	},
 	"systemPrompt": {
 		"preview": "Previsualització del prompt del sistema",
@@ -62,7 +63,7 @@
 		"types": {
 			"ENHANCE": {
 				"label": "Millorar prompt",
-				"description": "Utilitzeu la millora de prompts per obtenir suggeriments o millores personalitzades per a les vostres entrades. Això assegura que Roo entengui la vostra intenció i proporcioni les millors respostes possibles. Disponible a través de la icona ✨ al xat."
+				"description": "Utilitzeu la millora de prompts per obtenir suggeriments o millores personalitzades per a les vostres entrades. Això assegura que Agent entengui la vostra intenció i proporcioni les millors respostes possibles. Disponible a través de la icona ✨ al xat."
 			},
 			"EXPLAIN": {
 				"label": "Explicar codi",
@@ -91,16 +92,16 @@
 			"TERMINAL_EXPLAIN": {
 				"label": "Explicar comanda del terminal",
 				"description": "Obtingueu explicacions detallades de les comandes del terminal i les seves sortides. Disponible al menú contextual del terminal (clic dret al contingut seleccionat del terminal)."
+			},
+			"NEW_TASK": {
+				"label": "Iniciar nova tasca",
+				"description": "Inicieu una nova tasca amb l'entrada proporcionada. Disponible a la paleta de comandes."
 			}
 		}
 	},
-	"customModeCreation": {
-		"enableTitle": "Habilitar la creació de modes personalitzats a través de prompts",
-		"description": "Quan està habilitat, Roo us permet crear modes personalitzats utilitzant prompts com 'Crea'm un mode personalitzat que...'. Desactivar-ho redueix el vostre prompt del sistema en aproximadament 700 tokens quan aquesta funcionalitat no és necessària. Quan està desactivat, encara podeu crear modes personalitzats manualment utilitzant el botó + de dalt o editant el JSON de configuració relacionat."
-	},
 	"advancedSystemPrompt": {
 		"title": "Avançat: Sobreescriure prompt del sistema",
-		"description": "Podeu reemplaçar completament el prompt del sistema per a aquest mode (a part de la definició de rol i instruccions personalitzades) creant un fitxer a <span>.roo/system-prompt-{{slug}}</span> al vostre espai de treball. Aquesta és una funcionalitat molt avançada que eludeix les salvaguardes integrades i les comprovacions de consistència (especialment al voltant de l'ús d'eines), així que aneu amb compte!"
+		"description": "Podeu reemplaçar completament el prompt del sistema per a aquest mode (a part de la definició de rol i instruccions personalitzades) creant un fitxer a <span>.pearai-agent/system-prompt-{{slug}}</span> al vostre espai de treball. Aquesta és una funcionalitat molt avançada que eludeix les salvaguardes integrades i les comprovacions de consistència (especialment al voltant de l'ús d'eines), així que aneu amb compte!"
 	},
 	"createModeDialog": {
 		"title": "Crear nou mode",
@@ -121,13 +122,13 @@
 				"description": "Disponible a tots els espais de treball"
 			},
 			"project": {
-				"label": "Específic del projecte (.roomodes)",
+				"label": "Específic del projecte (.pearai-agent-ignore)",
 				"description": "Només disponible en aquest espai de treball, té prioritat sobre el global"
 			}
 		},
 		"roleDefinition": {
 			"label": "Definició de rol",
-			"description": "Definiu l'experiència i personalitat de Roo per a aquest mode."
+			"description": "Definiu l'experiència i personalitat de Agent per a aquest mode."
 		},
 		"tools": {
 			"label": "Eines disponibles",

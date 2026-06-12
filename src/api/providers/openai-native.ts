@@ -11,8 +11,15 @@ import {
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
+import { calculateApiCostOpenAI } from "../../utils/cost"
 
 const OPENAI_NATIVE_DEFAULT_TEMPERATURE = 0
+
+// Define a type for the model object returned by getModel
+export type OpenAiNativeModel = {
+	id: OpenAiNativeModelId
+	info: ModelInfo
+}
 
 export class OpenAiNativeHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -22,45 +29,55 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		super()
 		this.options = options
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
-		this.client = new OpenAI({ apiKey })
+		this.client = new OpenAI({ baseURL: this.options.openAiNativeBaseUrl, apiKey })
 	}
 
 	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		const modelId = this.getModel().id
+		const model = this.getModel()
 
-		if (modelId.startsWith("o1")) {
-			yield* this.handleO1FamilyMessage(modelId, systemPrompt, messages)
+		if (model.id.startsWith("o1")) {
+			yield* this.handleO1FamilyMessage(model, systemPrompt, messages)
 			return
 		}
 
-		if (modelId.startsWith("o3-mini")) {
-			yield* this.handleO3FamilyMessage(modelId, systemPrompt, messages)
+		if (model.id.startsWith("o3-mini")) {
+			yield* this.handleReasonerMessage(model, "o3-mini", systemPrompt, messages)
 			return
 		}
 
-		if (this.shouldUseResponsesApi(modelId)) {
-			yield* this.handleResponsesMessage(modelId, systemPrompt, messages)
+		if (this.shouldUseResponsesApi(model.id)) {
+			yield* this.handleResponsesMessage(model, systemPrompt, messages)
 			return
 		}
 
-		if (modelId.startsWith("gpt-5")) {
-			yield* this.handleGpt5FamilyMessage(modelId, systemPrompt, messages)
+		if (model.id.startsWith("gpt-5")) {
+			yield* this.handleGpt5FamilyMessage(model, systemPrompt, messages)
 			return
 		}
 
-		yield* this.handleDefaultModelMessage(modelId, systemPrompt, messages)
+		if (model.id.startsWith("o3")) {
+			yield* this.handleReasonerMessage(model, "o3", systemPrompt, messages)
+			return
+		}
+
+		if (model.id.startsWith("o4-mini")) {
+			yield* this.handleReasonerMessage(model, "o4-mini", systemPrompt, messages)
+			return
+		}
+
+		yield* this.handleDefaultModelMessage(model, systemPrompt, messages)
 	}
 
 	private async *handleO1FamilyMessage(
-		modelId: string,
+		model: OpenAiNativeModel,
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		// o1 supports developer prompt with formatting
 		// o1-preview and o1-mini only support user messages
-		const isOriginalO1 = modelId === "o1"
+		const isOriginalO1 = model.id === "o1"
 		const response = await this.client.chat.completions.create({
-			model: modelId,
+			model: model.id,
 			messages: [
 				{
 					role: isOriginalO1 ? "developer" : "user",
@@ -72,16 +89,17 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			stream_options: { include_usage: true },
 		})
 
-		yield* this.handleStreamResponse(response)
+		yield* this.handleStreamResponse(response, model)
 	}
 
-	private async *handleO3FamilyMessage(
-		modelId: string,
+	private async *handleReasonerMessage(
+		model: OpenAiNativeModel,
+		family: "o3-mini" | "o3" | "o4-mini",
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const stream = await this.client.chat.completions.create({
-			model: "o3-mini",
+			model: family,
 			messages: [
 				{
 					role: "developer",
@@ -94,19 +112,19 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			reasoning_effort: this.getChatReasoningEffort(),
 		})
 
-		yield* this.handleStreamResponse(stream)
+		yield* this.handleStreamResponse(stream, model)
 	}
 
 	private async *handleResponsesMessage(
-		modelId: string,
+		model: OpenAiNativeModel,
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const response = await this.client.responses.create({
-			model: modelId as OpenAI.Responses.ResponseCreateParamsNonStreaming["model"],
+			model: model.id as OpenAI.Responses.ResponseCreateParamsNonStreaming["model"],
 			instructions: systemPrompt,
 			input: this.convertMessagesToResponsesInput(messages),
-			max_output_tokens: this.getModel().info.maxTokens,
+			max_output_tokens: model.info.maxTokens,
 			reasoning: this.getResponsesReasoning(),
 			stream: false,
 		})
@@ -117,44 +135,47 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 
 		if (response.usage) {
-			yield {
-				type: "usage",
-				inputTokens: response.usage.input_tokens || 0,
-				outputTokens: response.usage.output_tokens || 0,
-			}
+			yield* this.yieldUsage(model.info, {
+				prompt_tokens: response.usage.input_tokens,
+				completion_tokens: response.usage.output_tokens,
+				total_tokens: response.usage.total_tokens,
+				prompt_tokens_details: {
+					cached_tokens: response.usage.input_tokens_details?.cached_tokens ?? 0,
+				},
+			} as OpenAI.Completions.CompletionUsage)
 		}
 	}
 
 	private async *handleGpt5FamilyMessage(
-		modelId: string,
+		model: OpenAiNativeModel,
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const stream = await this.client.chat.completions.create({
-			model: modelId,
+			model: model.id,
 			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
 			stream_options: { include_usage: true },
 			reasoning_effort: this.getChatReasoningEffort(),
 		})
 
-		yield* this.handleStreamResponse(stream)
+		yield* this.handleStreamResponse(stream, model)
 	}
 
 	private async *handleDefaultModelMessage(
-		modelId: string,
+		model: OpenAiNativeModel,
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const stream = await this.client.chat.completions.create({
-			model: modelId,
+			model: model.id,
 			temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
 			stream_options: { include_usage: true },
 		})
 
-		yield* this.handleStreamResponse(stream)
+		yield* this.handleStreamResponse(stream, model)
 	}
 
 	private async *yieldResponseData(response: OpenAI.Chat.Completions.ChatCompletion): ApiStream {
@@ -169,7 +190,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 	}
 
-	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
+	private async *handleStreamResponse(
+		stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
+		model: OpenAiNativeModel,
+	): ApiStream {
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
 			if (delta?.content) {
@@ -180,16 +204,29 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			}
 
 			if (chunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-				}
+				yield* this.yieldUsage(model.info, chunk.usage)
 			}
 		}
 	}
 
-	override getModel(): { id: OpenAiNativeModelId; info: ModelInfo } {
+	private async *yieldUsage(info: ModelInfo, usage: OpenAI.Completions.CompletionUsage | undefined): ApiStream {
+		const inputTokens = usage?.prompt_tokens || 0 // sum of cache hits and misses
+		const outputTokens = usage?.completion_tokens || 0
+		const cacheReadTokens = usage?.prompt_tokens_details?.cached_tokens || 0
+		const cacheWriteTokens = 0
+		const totalCost = calculateApiCostOpenAI(info, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
+		const nonCachedInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheWriteTokens)
+		yield {
+			type: "usage",
+			inputTokens: nonCachedInputTokens,
+			outputTokens: outputTokens,
+			cacheWriteTokens: cacheWriteTokens,
+			cacheReadTokens: cacheReadTokens,
+			totalCost: totalCost,
+		}
+	}
+
+	override getModel(): OpenAiNativeModel {
 		const modelId = this.options.apiModelId
 		if (modelId && modelId in openAiNativeModels) {
 			const id = modelId as OpenAiNativeModelId
@@ -229,7 +266,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const toolCallText =
 				"tool_calls" in message && message.tool_calls?.length
 					? message.tool_calls
-							.map((toolCall) => `Tool call ${toolCall.function.name}: ${toolCall.function.arguments}`)
+							.map((toolCall) =>
+								"function" in toolCall
+									? `Tool call ${toolCall.function.name}: ${toolCall.function.arguments}`
+									: `Tool call ${toolCall.id}`,
+							)
 							.join("\n")
 					: undefined
 
@@ -269,19 +310,19 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
-			const modelId = this.getModel().id
+			const model = this.getModel()
 			let requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
 
-			if (modelId.startsWith("o1")) {
-				requestOptions = this.getO1CompletionOptions(modelId, prompt)
-			} else if (modelId.startsWith("o3-mini")) {
-				requestOptions = this.getO3CompletionOptions(modelId, prompt)
-			} else if (this.shouldUseResponsesApi(modelId)) {
-				return this.completePromptWithResponsesApi(modelId, prompt)
-			} else if (modelId.startsWith("gpt-5")) {
-				requestOptions = this.getGpt5CompletionOptions(modelId, prompt)
+			if (model.id.startsWith("o1")) {
+				requestOptions = this.getO1CompletionOptions(model, prompt)
+			} else if (model.id.startsWith("o3-mini")) {
+				requestOptions = this.getO3CompletionOptions(model, prompt)
+			} else if (this.shouldUseResponsesApi(model.id)) {
+				return this.completePromptWithResponsesApi(model, prompt)
+			} else if (model.id.startsWith("gpt-5")) {
+				requestOptions = this.getGpt5CompletionOptions(model, prompt)
 			} else {
-				requestOptions = this.getDefaultCompletionOptions(modelId, prompt)
+				requestOptions = this.getDefaultCompletionOptions(model, prompt)
 			}
 
 			const response = await this.client.chat.completions.create(requestOptions)
@@ -295,17 +336,17 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	private getO1CompletionOptions(
-		modelId: string,
+		model: OpenAiNativeModel,
 		prompt: string,
 	): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
 		return {
-			model: modelId,
+			model: model.id,
 			messages: [{ role: "user", content: prompt }],
 		}
 	}
 
 	private getO3CompletionOptions(
-		modelId: string,
+		model: OpenAiNativeModel,
 		prompt: string,
 	): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
 		return {
@@ -316,21 +357,21 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	private getGpt5CompletionOptions(
-		modelId: string,
+		model: OpenAiNativeModel,
 		prompt: string,
 	): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
 		return {
-			model: modelId,
+			model: model.id,
 			messages: [{ role: "user", content: prompt }],
 			reasoning_effort: this.getChatReasoningEffort(),
 		}
 	}
 
-	private async completePromptWithResponsesApi(modelId: string, prompt: string): Promise<string> {
+	private async completePromptWithResponsesApi(model: OpenAiNativeModel, prompt: string): Promise<string> {
 		const response = await this.client.responses.create({
-			model: modelId as OpenAI.Responses.ResponseCreateParamsNonStreaming["model"],
+			model: model.id as OpenAI.Responses.ResponseCreateParamsNonStreaming["model"],
 			input: prompt,
-			max_output_tokens: this.getModel().info.maxTokens,
+			max_output_tokens: model.info.maxTokens,
 			reasoning: this.getResponsesReasoning(),
 			stream: false,
 		})
@@ -339,11 +380,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	private getDefaultCompletionOptions(
-		modelId: string,
+		model: OpenAiNativeModel,
 		prompt: string,
 	): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
 		return {
-			model: modelId,
+			model: model.id,
 			messages: [{ role: "user", content: prompt }],
 			temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 		}

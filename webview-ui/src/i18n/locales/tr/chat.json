@@ -1,5 +1,5 @@
 {
-	"greeting": "Roo sizin için ne yapabilir?",
+	"greeting": "Agent Code'a Hoş Geldiniz",
 	"task": {
 		"title": "Görev",
 		"seeMore": "Daha fazla gör",
@@ -7,11 +7,13 @@
 		"tokens": "Tokenlar:",
 		"cache": "Önbellek:",
 		"apiCost": "API Maliyeti:",
-		"contextWindow": "Bağlam Penceresi:",
+		"contextWindow": "Bağlam Uzunluğu:",
 		"closeAndStart": "Görevi kapat ve yeni bir görev başlat",
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)"
 	},
+	"unpin": "Sabitlemeyi iptal et",
+	"pin": "Sabitle",
 	"tokenProgress": {
 		"availableSpace": "Kullanılabilir alan: {{amount}} token",
 		"tokensUsed": "Kullanılan tokenlar: {{used}} / {{total}}",
@@ -50,6 +52,10 @@
 		"title": "Çalışırken Devam Et",
 		"tooltip": "Uyarılara rağmen devam et"
 	},
+	"killCommand": {
+		"title": "Komutu Durdur",
+		"tooltip": "Mevcut komutu durdur"
+	},
 	"resumeTask": {
 		"title": "Göreve Devam Et",
 		"tooltip": "Mevcut göreve devam et"
@@ -63,7 +69,26 @@
 		"tooltip": "Mevcut işlemi iptal et"
 	},
 	"scrollToBottom": "Sohbetin altına kaydır",
-	"aboutMe": "Ajansal kodlama yeteneklerindeki son atılımlar sayesinde, karmaşık yazılım geliştirme görevlerini adım adım ele alabilirim. Dosya oluşturma ve düzenleme, karmaşık projeleri keşfetme, tarayıcıyı kullanma ve terminal komutlarını çalıştırma (izin verdikten sonra) olanağı sağlayan araçlarla, kod tamamlama veya teknik desteğin ötesinde size yardımcı olabilirim. Hatta yeni araçlar oluşturmak ve kendi yeteneklerimi genişletmek için MCP'yi bile kullanabilirim.",
+	"about": "AI yardımıyla kod oluşturun, yeniden düzenleyin ve hatalarını ayıklayın.<br />Daha fazla bilgi edinmek için <DocsLink>belgelerimize</DocsLink> göz atın.",
+	"onboarding": "<strong>Bu çalışma alanındaki görev listeniz boş.</strong> Aşağıya bir görev yazarak başlayın. Nasıl başlayacağınızdan emin değil misiniz? Roo'nun sizin için neler yapabileceği hakkında daha fazla bilgiyi <DocsLink>belgelerde</DocsLink> okuyun.",
+	"rooTips": {
+		"boomerangTasks": {
+			"title": "Bumerang Görevleri",
+			"description": "Görevleri daha küçük, yönetilebilir parçalara ayırın."
+		},
+		"stickyModels": {
+			"title": "Yapışkan Modlar",
+			"description": "Her mod, en son kullandığınız modeli hatırlar"
+		},
+		"tools": {
+			"title": "Araçlar",
+			"description": "AI'nın web'e göz atarak, komutlar çalıştırarak ve daha fazlasını yaparak sorunları çözmesine izin verin."
+		},
+		"customizableModes": {
+			"title": "Özelleştirilebilir Modlar",
+			"description": "Kendi davranışları ve atanmış modelleri ile özelleştirilmiş kişilikler"
+		}
+	},
 	"selectMode": "Etkileşim modunu seçin",
 	"selectApiConfig": "API yapılandırmasını seçin",
 	"enhancePrompt": "Ek bağlamla istemi geliştir",
@@ -81,7 +106,10 @@
 	"edit": "Düzenle...",
 	"forNextMode": "sonraki mod için",
 	"error": "Hata",
-	"troubleMessage": "Roo sorun yaşıyor...",
+	"diffError": {
+		"title": "Düzenleme Başarısız"
+	},
+	"troubleMessage": "Agent sorun yaşıyor...",
 	"apiRequest": {
 		"title": "API İsteği",
 		"failed": "API İsteği Başarısız",
@@ -92,6 +120,7 @@
 	"checkpoint": {
 		"initial": "İlk Kontrol Noktası",
 		"regular": "Kontrol Noktası",
+		"initializingWarning": "Kontrol noktası hala başlatılıyor... Bu çok uzun sürerse, <settingsLink>ayarlar</settingsLink> bölümünden kontrol noktalarını devre dışı bırakabilir ve görevinizi yeniden başlatabilirsiniz.",
 		"menu": {
 			"viewDiff": "Farkları Görüntüle",
 			"restore": "Kontrol Noktasını Geri Yükle",
@@ -105,115 +134,85 @@
 		},
 		"current": "Mevcut"
 	},
+	"instructions": {
+		"wantsToFetch": "Agent mevcut göreve yardımcı olmak için ayrıntılı talimatlar almak istiyor"
+	},
 	"fileOperations": {
-		"wantsToRead": "Roo bu dosyayı okumak istiyor:",
-		"didRead": "Roo bu dosyayı okudu:",
-		"wantsToEdit": "Roo bu dosyayı düzenlemek istiyor:",
-		"wantsToCreate": "Roo yeni bir dosya oluşturmak istiyor:"
+		"wantsToRead": "Agent bu dosyayı okumak istiyor:",
+		"wantsToReadOutsideWorkspace": "Agent çalışma alanı dışındaki bu dosyayı okumak istiyor:",
+		"didRead": "Agent bu dosyayı okudu:",
+		"wantsToEdit": "Agent bu dosyayı düzenlemek istiyor:",
+		"wantsToEditOutsideWorkspace": "Agent çalışma alanı dışındaki bu dosyayı düzenlemek istiyor:",
+		"wantsToCreate": "Agent yeni bir dosya oluşturmak istiyor:",
+		"wantsToSearchReplace": "Agent bu dosyada arama ve değiştirme yapmak istiyor:",
+		"didSearchReplace": "Agent bu dosyada arama ve değiştirme yaptı:",
+		"wantsToInsert": "Agent bu dosyaya içerik eklemek istiyor:",
+		"wantsToInsertWithLineNumber": "Agent bu dosyanın {{lineNumber}}. satırına içerik eklemek istiyor:",
+		"wantsToInsertAtEnd": "Agent bu dosyanın sonuna içerik eklemek istiyor:"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Roo bu dizindeki üst düzey dosyaları görüntülemek istiyor:",
-		"didViewTopLevel": "Roo bu dizindeki üst düzey dosyaları görüntüledi:",
-		"wantsToViewRecursive": "Roo bu dizindeki tüm dosyaları özyinelemeli olarak görüntülemek istiyor:",
-		"didViewRecursive": "Roo bu dizindeki tüm dosyaları özyinelemeli olarak görüntüledi:",
-		"wantsToViewDefinitions": "Roo bu dizinde kullanılan kaynak kod tanımlama isimlerini görüntülemek istiyor:",
-		"didViewDefinitions": "Roo bu dizinde kullanılan kaynak kod tanımlama isimlerini görüntüledi:",
-		"wantsToSearch": "Roo bu dizinde <code>{{regex}}</code> için arama yapmak istiyor:",
-		"didSearch": "Roo bu dizinde <code>{{regex}}</code> için arama yaptı:"
+		"wantsToViewTopLevel": "Agent bu dizindeki üst düzey dosyaları görüntülemek istiyor:",
+		"didViewTopLevel": "Agent bu dizindeki üst düzey dosyaları görüntüledi:",
+		"wantsToViewRecursive": "Agent bu dizindeki tüm dosyaları özyinelemeli olarak görüntülemek istiyor:",
+		"didViewRecursive": "Agent bu dizindeki tüm dosyaları özyinelemeli olarak görüntüledi:",
+		"wantsToViewDefinitions": "Agent bu dizinde kullanılan kaynak kod tanımlama isimlerini görüntülemek istiyor:",
+		"didViewDefinitions": "Agent bu dizinde kullanılan kaynak kod tanımlama isimlerini görüntüledi:",
+		"wantsToSearch": "Agent bu dizinde <code>{{regex}}</code> için arama yapmak istiyor:",
+		"didSearch": "Agent bu dizinde <code>{{regex}}</code> için arama yaptı:"
 	},
 	"commandOutput": "Komut Çıktısı",
 	"response": "Yanıt",
 	"arguments": "Argümanlar",
 	"mcp": {
-		"wantsToUseTool": "Roo {{serverName}} MCP sunucusunda bir araç kullanmak istiyor:",
-		"wantsToAccessResource": "Roo {{serverName}} MCP sunucusundaki bir kaynağa erişmek istiyor:"
+		"wantsToUseTool": "Agent {{serverName}} MCP sunucusunda bir araç kullanmak istiyor:",
+		"wantsToAccessResource": "Agent {{serverName}} MCP sunucusundaki bir kaynağa erişmek istiyor:"
 	},
 	"modes": {
-		"wantsToSwitch": "Roo <code>{{mode}}</code> moduna geçmek istiyor",
-		"wantsToSwitchWithReason": "Roo <code>{{mode}}</code> moduna geçmek istiyor çünkü: {{reason}}",
-		"didSwitch": "Roo <code>{{mode}}</code> moduna geçti",
-		"didSwitchWithReason": "Roo <code>{{mode}}</code> moduna geçti çünkü: {{reason}}"
+		"wantsToSwitch": "Agent <code>{{mode}}</code> moduna geçmek istiyor",
+		"wantsToSwitchWithReason": "Agent <code>{{mode}}</code> moduna geçmek istiyor çünkü: {{reason}}",
+		"didSwitch": "Agent <code>{{mode}}</code> moduna geçti",
+		"didSwitchWithReason": "Agent <code>{{mode}}</code> moduna geçti çünkü: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Roo <code>{{mode}}</code> modunda yeni bir alt görev oluşturmak istiyor:",
-		"wantsToFinish": "Roo bu alt görevi bitirmek istiyor"
+		"wantsToCreate": "Agent <code>{{mode}}</code> modunda yeni bir alt görev oluşturmak istiyor:",
+		"wantsToFinish": "Agent bu alt görevi bitirmek istiyor",
+		"newTaskContent": "Alt Görev Talimatları",
+		"completionContent": "Alt Görev Tamamlandı",
+		"resultContent": "Alt Görev Sonuçları",
+		"defaultResult": "Lütfen sonraki göreve devam edin.",
+		"completionInstructions": "Alt görev tamamlandı! Sonuçları inceleyebilir ve düzeltmeler veya sonraki adımlar önerebilirsiniz. Her şey iyi görünüyorsa, sonucu üst göreve döndürmek için onaylayın."
 	},
 	"questions": {
 		"hasQuestion": "Roo'nun bir sorusu var:"
 	},
 	"taskCompleted": "Görev Tamamlandı",
-	"shellIntegration": {
-		"unavailable": "Kabuk Entegrasyonu Kullanılamıyor",
-		"troubleshooting": "Hala sorun mu yaşıyorsunuz?"
-	},
 	"powershell": {
 		"issues": "Windows PowerShell ile ilgili sorunlar yaşıyor gibi görünüyorsunuz, lütfen şu konuya bakın"
 	},
 	"autoApprove": {
 		"title": "Otomatik-onay:",
 		"none": "Hiçbiri",
-		"description": "Otomatik onay, Roo Code'un izin istemeden işlemler gerçekleştirmesine olanak tanır. Yalnızca tamamen güvendiğiniz eylemler için etkinleştirin.",
-		"actions": {
-			"readFiles": {
-				"label": "Dosyaları ve dizinleri oku",
-				"shortName": "Okuma",
-				"description": "Bilgisayarınızdaki herhangi bir dosyayı okuma erişimine izin verir."
-			},
-			"editFiles": {
-				"label": "Dosyaları düzenle",
-				"shortName": "Düzenleme",
-				"description": "Bilgisayarınızdaki herhangi bir dosyanın değiştirilmesine izin verir."
-			},
-			"executeCommands": {
-				"label": "Onaylanmış komutları çalıştır",
-				"shortName": "Komutlar",
-				"description": "Onaylanmış terminal komutlarının çalıştırılmasına izin verir. Bunu ayarlar panelinde yapılandırabilirsiniz."
-			},
-			"useBrowser": {
-				"label": "Tarayıcıyı kullan",
-				"shortName": "Tarayıcı",
-				"description": "Grafiksel arayüz olmayan bir tarayıcıda herhangi bir web sitesini başlatma ve etkileşim kurma yeteneğine izin verir."
-			},
-			"useMcp": {
-				"label": "MCP sunucularını kullan",
-				"shortName": "MCP",
-				"description": "Dosya sistemini değiştirebilen veya API'lerle etkileşime girebilen yapılandırılmış MCP sunucularının kullanımına izin verir."
-			},
-			"switchModes": {
-				"label": "Modları değiştir",
-				"shortName": "Modlar",
-				"description": "Onay gerektirmeden farklı modlar arasında otomatik geçişe izin verir."
-			},
-			"subtasks": {
-				"label": "Alt görevler oluştur ve tamamla",
-				"shortName": "Alt görevler",
-				"description": "Onay gerektirmeden alt görevlerin oluşturulmasına ve tamamlanmasına izin verir."
-			},
-			"retryRequests": {
-				"label": "Başarısız istekleri yeniden dene",
-				"shortName": "Yeniden Denemeler",
-				"description": "Sağlayıcı bir hata yanıtı döndürdüğünde başarısız API isteklerini otomatik olarak yeniden dener."
-			}
-		}
+		"description": "Otomatik onay, PearAI Agent (Powered by Roo Code / Cline)'un izin istemeden işlemler gerçekleştirmesine olanak tanır. Yalnızca tamamen güvendiğiniz eylemler için etkinleştirin. Daha detaylı yapılandırma <settingsLink>Ayarlar</settingsLink>'da mevcuttur."
 	},
 	"reasoning": {
 		"thinking": "Düşünüyor",
 		"seconds": "{{count}}sn"
 	},
+	"followUpSuggest": {
+		"copyToInput": "Giriş alanına kopyala (veya Shift + tıklama)"
+	},
 	"announcement": {
-		"title": "🎉 Roo Code 3.10 Yayınlandı",
-		"description": "Roo Code 3.10 güçlü üretkenlik iyileştirmeleri getiriyor!",
+		"title": "🎉 PearAI Agent (Powered by Roo Code / Cline) 3.15 Yayınlandı",
+		"description": "Agent Code 3.15 geri bildirimlerinize dayalı yeni özellikler ve iyileştirmeler getiriyor.",
 		"whatsNew": "Yenilikler",
-		"feature1": "Sorulara önerilen yanıtlar",
-		"feature2": "Geliştirilmiş büyük dosya işleme",
-		"feature3": "Yeniden yapılandırılmış @-mention dosya aramaları",
-		"feature4": "",
-		"feature5": "",
+		"feature1": "<bold>Vertex için İstem Önbelleği</bold>: Vertex AI için istem önbelleği desteği eklendi, yanıt sürelerini iyileştiriyor ve API maliyetlerini azaltıyor",
+		"feature2": "<bold>Terminal Yedek Mekanizması</bold>: VSCode terminal kabuk entegrasyonu başarısız olduğunda devreye giren yedek mekanizma uygulandı",
+		"feature3": "<bold>Geliştirilmiş Kod Parçacıkları</bold>: Sohbet arayüzünde kod parçacıklarının görüntülenmesi ve etkileşimi iyileştirildi",
 		"hideButton": "Duyuruyu gizle",
 		"detailsDiscussLinks": "<discordLink>Discord</discordLink> ve <redditLink>Reddit</redditLink> üzerinde daha fazla ayrıntı edinin ve tartışmalara katılın 🚀"
 	},
 	"browser": {
-		"rooWantsToUse": "Roo tarayıcıyı kullanmak istiyor:",
+		"rooWantsToUse": "Agent tarayıcıyı kullanmak istiyor:",
 		"consoleLogs": "Konsol Kayıtları",
 		"noNewLogs": "(Yeni kayıt yok)",
 		"screenshot": "Tarayıcı ekran görüntüsü",
@@ -233,5 +232,11 @@
 			"scrollUp": "Yukarı kaydır",
 			"close": "Tarayıcıyı kapat"
 		}
+	},
+	"systemPromptWarning": "UYARI: Özel sistem komut geçersiz kılma aktif. Bu işlevselliği ciddi şekilde bozabilir ve öngörülemeyen davranışlara neden olabilir.",
+	"shellIntegration": {
+		"title": "Komut Çalıştırma Uyarısı",
+		"description": "Komutunuz VSCode terminal kabuk entegrasyonu olmadan çalıştırılıyor. Bu uyarıyı gizlemek için <settingsLink>PearAI Agent (Powered by Roo Code / Cline) ayarları</settingsLink>'nın <strong>Terminal</strong> bölümünden kabuk entegrasyonunu devre dışı bırakabilir veya aşağıdaki bağlantıyı kullanarak VSCode terminal entegrasyonu sorunlarını giderebilirsiniz.",
+		"troubleshooting": "Kabuk entegrasyonu belgelerini görmek için buraya tıklayın."
 	}
 }

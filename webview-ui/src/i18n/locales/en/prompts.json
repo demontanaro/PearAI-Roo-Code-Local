@@ -6,8 +6,8 @@
 		"createNewMode": "Create new mode",
 		"editModesConfig": "Edit modes configuration",
 		"editGlobalModes": "Edit Global Modes",
-		"editProjectModes": "Edit Project Modes (.roomodes)",
-		"createModeHelpText": "Hit the + to create a new custom mode, or just ask Roo in chat to create one for you!"
+		"editProjectModes": "Edit Project Modes (.pearai-agent-ignore)",
+		"createModeHelpText": "Hit the + to create a new custom mode, or just ask Agent in chat to create one for you!"
 	},
 	"apiConfiguration": {
 		"title": "API Configuration",
@@ -25,23 +25,24 @@
 			"browser": "Use Browser",
 			"command": "Run Commands",
 			"mcp": "Use MCP"
-		}
+		},
+		"noTools": "None"
 	},
 	"roleDefinition": {
 		"title": "Role Definition",
 		"resetToDefault": "Reset to default",
-		"description": "Define Roo's expertise and personality for this mode. This description shapes how Roo presents itself and approaches tasks."
+		"description": "Define Agent's expertise and personality for this mode. This description shapes how Agent presents itself and approaches tasks."
 	},
 	"customInstructions": {
 		"title": "Mode-specific Custom Instructions (optional)",
 		"resetToDefault": "Reset to default",
 		"description": "Add behavioral guidelines specific to {{modeName}} mode.",
-		"loadFromFile": "Custom instructions specific to {{mode}} mode can also be loaded from <span>.clinerules-{{slug}}</span> in your workspace."
+		"loadFromFile": "Custom instructions specific to {{mode}} mode can also be loaded from the <span>.pearai-agent/rules-{{slug}}/</span> folder in your workspace (.roorules-{{slug}} and .clinerules-{{slug}} are deprecated and will stop working soon)."
 	},
 	"globalCustomInstructions": {
 		"title": "Custom Instructions for All Modes",
-		"description": "These instructions apply to all modes. They provide a base set of behaviors that can be enhanced by mode-specific instructions below.\nIf you would like Roo to think and speak in a different language than your editor display language ({{language}}), you can specify it here.",
-		"loadFromFile": "Instructions can also be loaded from <span>.clinerules</span> in your workspace."
+		"description": "These instructions apply to all modes. They provide a base set of behaviors that can be enhanced by mode-specific instructions below.\nIf you would like Agent to think and speak in a different language than your editor display language ({{language}}), you can specify it here.",
+		"loadFromFile": "Instructions can also be loaded from the <span>.pearai-agent/rules/</span> folder in your workspace (.roorules and .clinerules are deprecated and will stop working soon)."
 	},
 	"systemPrompt": {
 		"preview": "Preview System Prompt",
@@ -62,7 +63,7 @@
 		"types": {
 			"ENHANCE": {
 				"label": "Enhance Prompt",
-				"description": "Use prompt enhancement to get tailored suggestions or improvements for your inputs. This ensures Roo understands your intent and provides the best possible responses. Available via the ✨ icon in chat."
+				"description": "Use prompt enhancement to get tailored suggestions or improvements for your inputs. This ensures Agent understands your intent and provides the best possible responses. Available via the ✨ icon in chat."
 			},
 			"EXPLAIN": {
 				"label": "Explain Code",
@@ -91,16 +92,16 @@
 			"TERMINAL_EXPLAIN": {
 				"label": "Explain Terminal Command",
 				"description": "Get detailed explanations of terminal commands and their outputs. Available in the terminal context menu (right-click on selected terminal content)."
+			},
+			"NEW_TASK": {
+				"label": "Start New Task",
+				"description": "Start a new task with user input. Available in the Command Palette."
 			}
 		}
 	},
-	"customModeCreation": {
-		"enableTitle": "Enable Custom Mode Creation Through Prompts",
-		"description": "When enabled, Roo allows you to create custom modes using prompts like 'Make me a custom mode that…'. Disabling this reduces your system prompt by about 700 tokens when this feature isn't needed. When disabled you can still manually create custom modes using the + button above or by editing the related config JSON."
-	},
 	"advancedSystemPrompt": {
 		"title": "Advanced: Override System Prompt",
-		"description": "You can completely replace the system prompt for this mode (aside from the role definition and custom instructions) by creating a file at <span>.roo/system-prompt-{{slug}}</span> in your workspace. This is a very advanced feature that bypasses built-in safeguards and consistency checks (especially around tool usage), so be careful!"
+		"description": "You can completely replace the system prompt for this mode (aside from the role definition and custom instructions) by creating a file at <span>.pearai-agent/system-prompt-{{slug}}</span> in your workspace. This is a very advanced feature that bypasses built-in safeguards and consistency checks (especially around tool usage), so be careful!"
 	},
 	"createModeDialog": {
 		"title": "Create New Mode",
@@ -121,13 +122,13 @@
 				"description": "Available in all workspaces"
 			},
 			"project": {
-				"label": "Project-specific (.roomodes)",
+				"label": "Project-specific (.pearai-agent-ignore)",
 				"description": "Only available in this workspace, takes precedence over global"
 			}
 		},
 		"roleDefinition": {
 			"label": "Role Definition",
-			"description": "Define Roo's expertise and personality for this mode."
+			"description": "Define Agent's expertise and personality for this mode."
 		},
 		"tools": {
 			"label": "Available Tools",

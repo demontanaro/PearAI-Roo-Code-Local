@@ -1,5 +1,5 @@
 {
-	"greeting": "Que peut faire Roo pour vous ?",
+	"greeting": "Bienvenue sur PearAI Agent (Powered by Roo Code / Cline)",
 	"task": {
 		"title": "Tâche",
 		"seeMore": "Voir plus",
@@ -7,11 +7,13 @@
 		"tokens": "Tokens :",
 		"cache": "Cache :",
 		"apiCost": "Coût API :",
-		"contextWindow": "Fenêtre de contexte :",
+		"contextWindow": "Durée du contexte :",
 		"closeAndStart": "Fermer la tâche et en commencer une nouvelle",
 		"export": "Exporter l'historique des tâches",
 		"delete": "Supprimer la tâche (Shift + Clic pour ignorer la confirmation)"
 	},
+	"unpin": "Désépingler",
+	"pin": "Épingler",
 	"tokenProgress": {
 		"availableSpace": "Espace disponible : {{amount}} tokens",
 		"tokensUsed": "Tokens utilisés : {{used}} sur {{total}}",
@@ -50,6 +52,10 @@
 		"title": "Continuer pendant l'exécution",
 		"tooltip": "Continuer malgré les avertissements"
 	},
+	"killCommand": {
+		"title": "Arrêter la commande",
+		"tooltip": "Arrêter la commande actuelle"
+	},
 	"resumeTask": {
 		"title": "Reprendre la tâche",
 		"tooltip": "Continuer la tâche actuelle"
@@ -63,9 +69,28 @@
 		"tooltip": "Annuler l'opération actuelle"
 	},
 	"scrollToBottom": "Défiler jusqu'au bas du chat",
-	"aboutMe": "Grâce aux dernières avancées en matière de capacités de codage agent, je peux gérer des tâches complexes de développement logiciel étape par étape. Avec des outils qui me permettent de créer et d'éditer des fichiers, d'explorer des projets complexes, d'utiliser le navigateur et d'exécuter des commandes de terminal (après votre autorisation), je peux vous aider de manières qui vont au-delà de la complétion de code ou du support technique. Je peux même utiliser MCP pour créer de nouveaux outils et étendre mes propres capacités.",
+	"about": "Générer, refactoriser et déboguer du code avec l'assistance de l'IA.<br />Consultez notre <DocsLink>documentation</DocsLink> pour en savoir plus.",
+	"onboarding": "Grâce aux dernières avancées en matière de capacités de codage agent, je peux gérer des tâches complexes de développement logiciel étape par étape. Avec des outils qui me permettent de créer et d'éditer des fichiers, d'explorer des projets complexes, d'utiliser le navigateur et d'exécuter des commandes de terminal (après votre autorisation), je peux vous aider de manières qui vont au-delà de la complétion de code ou du support technique. Je peux même utiliser MCP pour créer de nouveaux outils et étendre mes propres capacités.",
+	"rooTips": {
+		"boomerangTasks": {
+			"title": "Tâches Boomerang",
+			"description": "Divisez les tâches en parties plus petites et gérables."
+		},
+		"stickyModels": {
+			"title": "Modes persistants",
+			"description": "Chaque mode se souvient de votre dernier modèle utilisé"
+		},
+		"tools": {
+			"title": "Outils",
+			"description": "Permettez à l'IA de résoudre des problèmes en naviguant sur le Web, en exécutant des commandes, et plus encore."
+		},
+		"customizableModes": {
+			"title": "Modes personnalisables",
+			"description": "Des personas spécialisés avec leurs propres comportements et modèles assignés"
+		}
+	},
 	"selectMode": "Sélectionner le mode d'interaction",
-	"selectApiConfig": "Sélectionner la configuration API",
+	"selectApiConfig": "Sélectionner la configuration de l'API",
 	"enhancePrompt": "Améliorer la requête avec un contexte supplémentaire",
 	"addImages": "Ajouter des images au message",
 	"sendMessage": "Envoyer le message",
@@ -81,7 +106,10 @@
 	"edit": "Éditer...",
 	"forNextMode": "pour le prochain mode",
 	"error": "Erreur",
-	"troubleMessage": "Roo rencontre des difficultés...",
+	"diffError": {
+		"title": "Modification échouée"
+	},
+	"troubleMessage": "Agent rencontre des difficultés...",
 	"apiRequest": {
 		"title": "Requête API",
 		"failed": "Échec de la requête API",
@@ -92,6 +120,7 @@
 	"checkpoint": {
 		"initial": "Point de contrôle initial",
 		"regular": "Point de contrôle",
+		"initializingWarning": "Initialisation du point de contrôle en cours... Si cela prend trop de temps, tu peux désactiver les points de contrôle dans les <settingsLink>paramètres</settingsLink> et redémarrer ta tâche.",
 		"menu": {
 			"viewDiff": "Voir les différences",
 			"restore": "Restaurer le point de contrôle",
@@ -106,114 +135,84 @@
 		"current": "Actuel"
 	},
 	"fileOperations": {
-		"wantsToRead": "Roo veut lire ce fichier :",
-		"didRead": "Roo a lu ce fichier :",
-		"wantsToEdit": "Roo veut éditer ce fichier :",
-		"wantsToCreate": "Roo veut créer un nouveau fichier :"
+		"wantsToRead": "Agent veut lire ce fichier :",
+		"wantsToReadOutsideWorkspace": "Agent veut lire ce fichier en dehors de l'espace de travail :",
+		"didRead": "Agent a lu ce fichier :",
+		"wantsToEdit": "Agent veut éditer ce fichier :",
+		"wantsToEditOutsideWorkspace": "Agent veut éditer ce fichier en dehors de l'espace de travail :",
+		"wantsToCreate": "Agent veut créer un nouveau fichier :",
+		"wantsToSearchReplace": "Agent veut effectuer une recherche et remplacement sur ce fichier :",
+		"didSearchReplace": "Agent a effectué une recherche et remplacement sur ce fichier :",
+		"wantsToInsert": "Agent veut insérer du contenu dans ce fichier :",
+		"wantsToInsertWithLineNumber": "Agent veut insérer du contenu dans ce fichier à la ligne {{lineNumber}} :",
+		"wantsToInsertAtEnd": "Agent veut ajouter du contenu à la fin de ce fichier :"
+	},
+	"instructions": {
+		"wantsToFetch": "Agent veut récupérer des instructions détaillées pour aider à la tâche actuelle"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Roo veut voir les fichiers de premier niveau dans ce répertoire :",
-		"didViewTopLevel": "Roo a vu les fichiers de premier niveau dans ce répertoire :",
-		"wantsToViewRecursive": "Roo veut voir récursivement tous les fichiers dans ce répertoire :",
-		"didViewRecursive": "Roo a vu récursivement tous les fichiers dans ce répertoire :",
-		"wantsToViewDefinitions": "Roo veut voir les noms de définitions de code source utilisés dans ce répertoire :",
-		"didViewDefinitions": "Roo a vu les noms de définitions de code source utilisés dans ce répertoire :",
-		"wantsToSearch": "Roo veut rechercher dans ce répertoire <code>{{regex}}</code> :",
-		"didSearch": "Roo a recherché dans ce répertoire <code>{{regex}}</code> :"
+		"wantsToViewTopLevel": "Agent veut voir les fichiers de premier niveau dans ce répertoire :",
+		"didViewTopLevel": "Agent a vu les fichiers de premier niveau dans ce répertoire :",
+		"wantsToViewRecursive": "Agent veut voir récursivement tous les fichiers dans ce répertoire :",
+		"didViewRecursive": "Agent a vu récursivement tous les fichiers dans ce répertoire :",
+		"wantsToViewDefinitions": "Agent veut voir les noms de définitions de code source utilisés dans ce répertoire :",
+		"didViewDefinitions": "Agent a vu les noms de définitions de code source utilisés dans ce répertoire :",
+		"wantsToSearch": "Agent veut rechercher dans ce répertoire <code>{{regex}}</code> :",
+		"didSearch": "Agent a recherché dans ce répertoire <code>{{regex}}</code> :"
 	},
 	"commandOutput": "Sortie de commande",
 	"response": "Réponse",
 	"arguments": "Arguments",
 	"mcp": {
-		"wantsToUseTool": "Roo veut utiliser un outil sur le serveur MCP {{serverName}} :",
-		"wantsToAccessResource": "Roo veut accéder à une ressource sur le serveur MCP {{serverName}} :"
+		"wantsToUseTool": "Agent veut utiliser un outil sur le serveur MCP {{serverName}} :",
+		"wantsToAccessResource": "Agent veut accéder à une ressource sur le serveur MCP {{serverName}} :"
 	},
 	"modes": {
-		"wantsToSwitch": "Roo veut passer au mode <code>{{mode}}</code>",
-		"wantsToSwitchWithReason": "Roo veut passer au mode <code>{{mode}}</code> car : {{reason}}",
-		"didSwitch": "Roo est passé au mode <code>{{mode}}</code>",
-		"didSwitchWithReason": "Roo est passé au mode <code>{{mode}}</code> car : {{reason}}"
+		"wantsToSwitch": "Agent veut passer au mode <code>{{mode}}</code>",
+		"wantsToSwitchWithReason": "Agent veut passer au mode <code>{{mode}}</code> car : {{reason}}",
+		"didSwitch": "Agent est passé au mode <code>{{mode}}</code>",
+		"didSwitchWithReason": "Agent est passé au mode <code>{{mode}}</code> car : {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Roo veut créer une nouvelle sous-tâche en mode <code>{{mode}}</code> :",
-		"wantsToFinish": "Roo veut terminer cette sous-tâche"
+		"wantsToCreate": "Agent veut créer une nouvelle sous-tâche en mode <code>{{mode}}</code> :",
+		"wantsToFinish": "Agent veut terminer cette sous-tâche",
+		"newTaskContent": "Instructions de la sous-tâche",
+		"completionContent": "Sous-tâche terminée",
+		"resultContent": "Résultats de la sous-tâche",
+		"defaultResult": "Veuillez continuer avec la tâche suivante.",
+		"completionInstructions": "Sous-tâche terminée ! Vous pouvez examiner les résultats et suggérer des corrections ou les prochaines étapes. Si tout semble bon, confirmez pour retourner le résultat à la tâche parente."
 	},
 	"questions": {
-		"hasQuestion": "Roo a une question :"
+		"hasQuestion": "Agent a une question :"
 	},
 	"taskCompleted": "Tâche terminée",
-	"shellIntegration": {
-		"unavailable": "Intégration du shell indisponible",
-		"troubleshooting": "Toujours des problèmes ?"
-	},
 	"powershell": {
 		"issues": "Il semble que vous rencontriez des problèmes avec Windows PowerShell, veuillez consulter ce"
 	},
 	"autoApprove": {
 		"title": "Auto-approbation :",
 		"none": "Aucune",
-		"description": "L'auto-approbation permet à Roo Code d'effectuer des actions sans demander d'autorisation. Activez-la uniquement pour les actions auxquelles vous faites entièrement confiance.",
-		"actions": {
-			"readFiles": {
-				"label": "Lire fichiers et répertoires",
-				"shortName": "Lecture",
-				"description": "Permet l'accès en lecture à n'importe quel fichier sur votre ordinateur."
-			},
-			"editFiles": {
-				"label": "Éditer des fichiers",
-				"shortName": "Édition",
-				"description": "Permet la modification de n'importe quel fichier sur votre ordinateur."
-			},
-			"executeCommands": {
-				"label": "Exécuter des commandes approuvées",
-				"shortName": "Commandes",
-				"description": "Permet l'exécution de commandes de terminal approuvées. Vous pouvez configurer cela dans le panneau des paramètres."
-			},
-			"useBrowser": {
-				"label": "Utiliser le navigateur",
-				"shortName": "Navigateur",
-				"description": "Permet de lancer et d'interagir avec n'importe quel site web dans un navigateur sans interface."
-			},
-			"useMcp": {
-				"label": "Utiliser les serveurs MCP",
-				"shortName": "MCP",
-				"description": "Permet l'utilisation de serveurs MCP configurés qui peuvent modifier le système de fichiers ou interagir avec des APIs."
-			},
-			"switchModes": {
-				"label": "Changer de modes",
-				"shortName": "Modes",
-				"description": "Permet le changement automatique entre différents modes sans nécessiter d'approbation."
-			},
-			"subtasks": {
-				"label": "Créer et terminer des sous-tâches",
-				"shortName": "Sous-tâches",
-				"description": "Permet la création et l'achèvement de sous-tâches sans nécessiter d'approbation."
-			},
-			"retryRequests": {
-				"label": "Réessayer les requêtes échouées",
-				"shortName": "Réessais",
-				"description": "Réessaie automatiquement les requêtes API échouées lorsque le fournisseur renvoie une réponse d'erreur."
-			}
-		}
+		"description": "L'auto-approbation permet à PearAI Agent (Powered by Roo Code / Cline) d'effectuer des actions sans demander d'autorisation. Activez-la uniquement pour les actions auxquelles vous faites entièrement confiance. Configuration plus détaillée disponible dans les <settingsLink>Paramètres</settingsLink>."
 	},
 	"reasoning": {
 		"thinking": "Réflexion",
 		"seconds": "{{count}}s"
 	},
+	"followUpSuggest": {
+		"copyToInput": "Copier vers l'entrée (ou Shift + clic)"
+	},
 	"announcement": {
-		"title": "🎉 Roo Code 3.10 est sortie",
-		"description": "Roo Code 3.10 apporte de puissantes améliorations de productivité !",
+		"title": "🎉 PearAI Agent (Powered by Roo Code / Cline) 3.15 est sortie",
+		"description": "Agent Code 3.15 apporte de nouvelles fonctionnalités et améliorations basées sur vos retours.",
 		"whatsNew": "Quoi de neuf",
-		"feature1": "Réponses suggérées aux questions",
-		"feature2": "Gestion améliorée des fichiers volumineux",
-		"feature3": "Recherche de fichiers par @-mention reconstruite",
-		"feature4": "",
-		"feature5": "",
+		"feature1": "<bold>Mise en cache des prompts pour Vertex</bold> : Ajout du support de mise en cache des prompts pour Vertex AI, améliorant les temps de réponse et réduisant les coûts API",
+		"feature2": "<bold>Solution de secours pour Terminal</bold> : Implémentation d'un mécanisme de secours lorsque l'intégration shell du terminal VSCode échoue",
+		"feature3": "<bold>Extraits de code améliorés</bold> : Rendu et interaction améliorés des extraits de code dans l'interface de chat",
 		"hideButton": "Masquer l'annonce",
 		"detailsDiscussLinks": "Obtenez plus de détails et participez aux discussions sur <discordLink>Discord</discordLink> et <redditLink>Reddit</redditLink> 🚀"
 	},
 	"browser": {
-		"rooWantsToUse": "Roo veut utiliser le navigateur :",
+		"rooWantsToUse": "Agent veut utiliser le navigateur :",
 		"consoleLogs": "Journaux de console",
 		"noNewLogs": "(Pas de nouveaux journaux)",
 		"screenshot": "Capture d'écran du navigateur",
@@ -233,5 +232,11 @@
 			"scrollUp": "Défiler vers le haut",
 			"close": "Fermer le navigateur"
 		}
+	},
+	"systemPromptWarning": "AVERTISSEMENT : Remplacement d'instructions système personnalisées actif. Cela peut gravement perturber la fonctionnalité et provoquer un comportement imprévisible.",
+	"shellIntegration": {
+		"title": "Avertissement d'exécution de commande",
+		"description": "Votre commande est exécutée sans l'intégration shell du terminal VSCode. Pour supprimer cet avertissement, vous pouvez désactiver l'intégration shell dans la section <strong>Terminal</strong> des <settingsLink>paramètres de PearAI Agent (Powered by Roo Code / Cline)</settingsLink> ou résoudre les problèmes d'intégration du terminal VSCode en utilisant le lien ci-dessous.",
+		"troubleshooting": "Cliquez ici pour la documentation d'intégration shell."
 	}
 }

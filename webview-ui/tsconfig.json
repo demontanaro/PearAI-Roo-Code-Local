@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "es5",
+		"target": "es2022",
 		"lib": ["dom", "dom.iterable", "esnext"],
 		"allowJs": true,
 		"skipLibCheck": true,
@@ -10,15 +10,21 @@
 		"forceConsistentCasingInFileNames": true,
 		"noFallthroughCasesInSwitch": true,
 		"module": "esnext",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"noEmit": true,
 		"jsx": "react-jsx",
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"]
-		}
+			"@/*": ["./src/*"],
+			"@src/*": ["./src/*"],
+			"@roo/*": ["../src/*"],
+			"js-tiktoken/ranks/o200k_base": ["../node_modules/js-tiktoken/dist/ranks/o200k_base"]
+		},
+		"useUnknownInCatchVariables": false,
+		"downlevelIteration": true
 	},
-	"include": ["src", "../src/shared"]
+	"include": ["src", "../src/shared"],
+	"exclude": ["node_modules"]
 }

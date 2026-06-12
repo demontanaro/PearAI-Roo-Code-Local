@@ -26,9 +26,13 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
+
+		const apiKeyFieldName =
+			this.options.anthropicBaseUrl && this.options.anthropicUseAuthToken ? "authToken" : "apiKey"
+
 		this.client = new Anthropic({
-			apiKey: this.options.apiKey,
 			baseURL: this.options.anthropicBaseUrl || undefined,
+			[apiKeyFieldName]: this.options.apiKey,
 		})
 	}
 
@@ -52,8 +56,14 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			case "claude-3-opus-20240229":
 			case "claude-3-haiku-20240307": {
 				/**
-				 * The latest message will be the new user message, one before will
-				 * be the assistant message from a previous request, and the user message before that will be a previously cached user message. So we need to mark the latest user message as ephemeral to cache it for the next request, and mark the second to last user message as ephemeral to let the server know the last message to retrieve from the cache for the current request..
+				 * The latest message will be the new user message, one before
+				 * will be the assistant message from a previous request, and
+				 * the user message before that will be a previously cached user
+				 * message. So we need to mark the latest user message as
+				 * ephemeral to cache it for the next request, and mark the
+				 * second to last user message as ephemeral to let the server
+				 * know the last message to retrieve from the cache for the
+				 * current request.
 				 */
 				const userMsgIndices = messages.reduce(
 					(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
@@ -87,9 +97,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 							}
 							return message
 						}),
-						// tools, // cache breakpoints go from tools > system > messages, and since tools dont change, we can just set the breakpoint at the end of system (this avoids having to set a breakpoint at the end of tools which by itself does not meet min requirements for haiku caching)
-						// tool_choice: { type: "auto" },
-						// tools: tools,
 						stream: true,
 					},
 					(() => {
@@ -112,9 +119,18 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 							case "claude-3-opus-20240229":
 							case "claude-3-haiku-20240307":
 								betas.push("prompt-caching-2024-07-31")
+								// Include prompt_key if newProjectType is set
 								return {
-									headers: { "anthropic-beta": betas.join(",") },
-									authorization: `Bearer ${this.options.apiKey}`,
+									headers: {
+										"anthropic-beta": betas.join(","),
+										prompt_key: this.options.creatorModeConfig?.newProjectType
+											? String(this.options.creatorModeConfig.newProjectType)
+											: undefined,
+										project_path: this.options.creatorModeConfig?.newProjectPath
+											? String(this.options.creatorModeConfig.newProjectPath)
+											: undefined,
+										authorization: `Bearer ${this.options.apiKey}`,
+									},
 								}
 							default:
 								return undefined
@@ -130,8 +146,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					temperature: requestTemperature,
 					system: [{ text: systemPrompt, type: "text" }],
 					messages,
-					// tools,
-					// tool_choice: { type: "auto" },
 					stream: true,
 				})) as any
 				break
@@ -241,6 +255,28 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			id = "claude-3-7-sonnet-20250219"
 		}
 
+		// Prioritize serverside model info
+		if (this.options.apiModelId && this.options.pearaiAgentModels) {
+			let modelInfo = null
+			if (this.options.apiModelId.startsWith("pearai")) {
+				modelInfo = this.options.pearaiAgentModels.models[this.options.apiModelId]
+			} else {
+				modelInfo = this.options.pearaiAgentModels.models[this.options.apiModelId || "pearai-model"]
+			}
+			if (modelInfo) {
+				return {
+					id: this.options.apiModelId,
+					info: modelInfo,
+					virtualId,
+					...getModelParams({
+						options: this.options,
+						model: info,
+						defaultMaxTokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
+					}),
+				}
+			}
+		}
+
 		return {
 			id,
 			info,
@@ -250,14 +286,14 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	async completePrompt(prompt: string) {
-		let { id: modelId, temperature } = this.getModel()
+		let { id: model, temperature } = this.getModel()
 		let requestTemperature: number | undefined = temperature
-		if (omitsSamplingParams(modelId)) {
+		if (omitsSamplingParams(model)) {
 			requestTemperature = undefined
 		}
 
 		const message = await this.client.messages.create({
-			model: modelId,
+			model,
 			max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
 			thinking: undefined,
 			temperature: requestTemperature,
@@ -278,16 +314,11 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	override async countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number> {
 		try {
 			// Use the current model
-			const actualModelId = this.getModel().id
+			const { id: model } = this.getModel()
 
 			const response = await this.client.messages.countTokens({
-				model: actualModelId,
-				messages: [
-					{
-						role: "user",
-						content: content,
-					},
-				],
+				model,
+				messages: [{ role: "user", content: content }],
 			})
 
 			return response.input_tokens

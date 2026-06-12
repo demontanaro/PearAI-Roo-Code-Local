@@ -6,8 +6,8 @@
 		"createNewMode": "Neuen Modus erstellen",
 		"editModesConfig": "Moduskonfiguration bearbeiten",
 		"editGlobalModes": "Globale Modi bearbeiten",
-		"editProjectModes": "Projektmodi bearbeiten (.roomodes)",
-		"createModeHelpText": "Klicke auf +, um einen neuen benutzerdefinierten Modus zu erstellen, oder bitte Roo einfach im Chat, einen für dich zu erstellen!"
+		"editProjectModes": "Projektmodi bearbeiten (.pearai-agent-ignore)",
+		"createModeHelpText": "Klicke auf +, um einen neuen benutzerdefinierten Modus zu erstellen, oder bitte Agent einfach im Chat, einen für dich zu erstellen!"
 	},
 	"apiConfiguration": {
 		"title": "API-Konfiguration",
@@ -25,23 +25,24 @@
 			"browser": "Browser verwenden",
 			"command": "Befehle ausführen",
 			"mcp": "MCP verwenden"
-		}
+		},
+		"noTools": "Keine"
 	},
 	"roleDefinition": {
 		"title": "Rollendefinition",
 		"resetToDefault": "Auf Standardwerte zurücksetzen",
-		"description": "Definiere Roos Expertise und Persönlichkeit für diesen Modus. Diese Beschreibung prägt, wie Roo sich präsentiert und an Aufgaben herangeht."
+		"description": "Definiere Roos Expertise und Persönlichkeit für diesen Modus. Diese Beschreibung prägt, wie Agent sich präsentiert und an Aufgaben herangeht."
 	},
 	"customInstructions": {
 		"title": "Modusspezifische benutzerdefinierte Anweisungen (optional)",
 		"resetToDefault": "Auf Standardwerte zurücksetzen",
 		"description": "Fügen Sie verhaltensspezifische Richtlinien für den Modus {{modeName}} hinzu.",
-		"loadFromFile": "Benutzerdefinierte Anweisungen für den Modus {{mode}} können auch aus <span>.clinerules-{{slug}}</span> in deinem Arbeitsbereich geladen werden."
+		"loadFromFile": "Benutzerdefinierte Anweisungen für den Modus {{mode}} können auch aus dem Ordner <span>.pearai-agent/rules-{{slug}}/</span> in deinem Arbeitsbereich geladen werden (.roorules-{{slug}} und .clinerules-{{slug}} sind veraltet und werden bald nicht mehr funktionieren)."
 	},
 	"globalCustomInstructions": {
 		"title": "Benutzerdefinierte Anweisungen für alle Modi",
-		"description": "Diese Anweisungen gelten für alle Modi. Sie bieten einen grundlegenden Satz von Verhaltensweisen, die durch modusspezifische Anweisungen unten erweitert werden können.\nWenn du möchtest, dass Roo in einer anderen Sprache als deiner Editor-Anzeigesprache ({{language}}) denkt und spricht, kannst du das hier angeben.",
-		"loadFromFile": "Anweisungen können auch aus <span>.clinerules</span> in deinem Arbeitsbereich geladen werden."
+		"description": "Diese Anweisungen gelten für alle Modi. Sie bieten einen grundlegenden Satz von Verhaltensweisen, die durch modusspezifische Anweisungen unten erweitert werden können.\nWenn du möchtest, dass Agent in einer anderen Sprache als deiner Editor-Anzeigesprache ({{language}}) denkt und spricht, kannst du das hier angeben.",
+		"loadFromFile": "Anweisungen können auch aus dem Ordner <span>.pearai-agent/rules/</span> in deinem Arbeitsbereich geladen werden (.roorules und .clinerules sind veraltet und werden bald nicht mehr funktionieren)."
 	},
 	"systemPrompt": {
 		"preview": "System-Prompt Vorschau",
@@ -62,7 +63,7 @@
 		"types": {
 			"ENHANCE": {
 				"label": "Prompt verbessern",
-				"description": "Verwenden Sie die Prompt-Verbesserung, um maßgeschneiderte Vorschläge oder Verbesserungen für Ihre Eingaben zu erhalten. Dies stellt sicher, dass Roo Ihre Absicht versteht und die bestmöglichen Antworten liefert. Verfügbar über das ✨-Symbol im Chat."
+				"description": "Verwenden Sie die Prompt-Verbesserung, um maßgeschneiderte Vorschläge oder Verbesserungen für Ihre Eingaben zu erhalten. Dies stellt sicher, dass Agent Ihre Absicht versteht und die bestmöglichen Antworten liefert. Verfügbar über das ✨-Symbol im Chat."
 			},
 			"EXPLAIN": {
 				"label": "Code erklären",
@@ -91,16 +92,16 @@
 			"TERMINAL_EXPLAIN": {
 				"label": "Terminal-Befehl erklären",
 				"description": "Erhalten Sie detaillierte Erklärungen zu Terminal-Befehlen und deren Ausgaben. Verfügbar im Kontextmenü des Terminals (Rechtsklick auf ausgewählten Terminal-Inhalt)."
+			},
+			"NEW_TASK": {
+				"label": "Neue Aufgabe starten",
+				"description": "Starte eine neue Aufgabe mit deiner Eingabe. Verfügbar in der Befehlspalette."
 			}
 		}
 	},
-	"customModeCreation": {
-		"enableTitle": "Erstellung benutzerdefinierter Modi über Prompts aktivieren",
-		"description": "Wenn aktiviert, ermöglicht Roo dir, benutzerdefinierte Modi mit Prompts wie 'Erstelle mir einen benutzerdefinierten Modus, der...' zu erstellen. Die Deaktivierung reduziert deinen System-Prompt um etwa 700 Tokens, wenn diese Funktion nicht benötigt wird. Bei Deaktivierung kannst du immer noch manuell benutzerdefinierte Modi mit der +-Schaltfläche oben erstellen oder durch Bearbeiten der zugehörigen Konfigurations-JSON."
-	},
 	"advancedSystemPrompt": {
 		"title": "Erweitert: System-Prompt überschreiben",
-		"description": "Du kannst den System-Prompt für diesen Modus vollständig ersetzen (abgesehen von der Rollendefinition und benutzerdefinierten Anweisungen), indem du eine Datei unter <span>.roo/system-prompt-{{slug}}</span> in deinem Arbeitsbereich erstellst. Dies ist eine sehr fortgeschrittene Funktion, die eingebaute Schutzmaßnahmen und Konsistenzprüfungen umgeht (besonders bei der Werkzeugnutzung), also sei vorsichtig!"
+		"description": "Du kannst den System-Prompt für diesen Modus vollständig ersetzen (abgesehen von der Rollendefinition und benutzerdefinierten Anweisungen), indem du eine Datei unter <span>.pearai-agent/system-prompt-{{slug}}</span> in deinem Arbeitsbereich erstellst. Dies ist eine sehr fortgeschrittene Funktion, die eingebaute Schutzmaßnahmen und Konsistenzprüfungen umgeht (besonders bei der Werkzeugnutzung), also sei vorsichtig!"
 	},
 	"createModeDialog": {
 		"title": "Neuen Modus erstellen",
@@ -121,7 +122,7 @@
 				"description": "Verfügbar in allen Arbeitsbereichen"
 			},
 			"project": {
-				"label": "Projektspezifisch (.roomodes)",
+				"label": "Projektspezifisch (.pearai-agent-ignore)",
 				"description": "Nur in diesem Arbeitsbereich verfügbar, hat Vorrang vor global"
 			}
 		},

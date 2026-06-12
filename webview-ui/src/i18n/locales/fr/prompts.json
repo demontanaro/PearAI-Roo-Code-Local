@@ -6,8 +6,8 @@
 		"createNewMode": "Créer un nouveau mode",
 		"editModesConfig": "Modifier la configuration des modes",
 		"editGlobalModes": "Modifier les modes globaux",
-		"editProjectModes": "Modifier les modes du projet (.roomodes)",
-		"createModeHelpText": "Cliquez sur + pour créer un nouveau mode personnalisé, ou demandez simplement à Roo dans le chat de vous en créer un !"
+		"editProjectModes": "Modifier les modes du projet (.pearai-agent-ignore)",
+		"createModeHelpText": "Cliquez sur + pour créer un nouveau mode personnalisé, ou demandez simplement à Agent dans le chat de vous en créer un !"
 	},
 	"apiConfiguration": {
 		"title": "Configuration API",
@@ -25,23 +25,24 @@
 			"browser": "Utiliser le navigateur",
 			"command": "Exécuter des commandes",
 			"mcp": "Utiliser MCP"
-		}
+		},
+		"noTools": "Aucun"
 	},
 	"roleDefinition": {
 		"title": "Définition du rôle",
 		"resetToDefault": "Réinitialiser aux valeurs par défaut",
-		"description": "Définissez l'expertise et la personnalité de Roo pour ce mode. Cette description façonne la manière dont Roo se présente et aborde les tâches."
+		"description": "Définissez l'expertise et la personnalité de Agent pour ce mode. Cette description façonne la manière dont Agent se présente et aborde les tâches."
 	},
 	"customInstructions": {
 		"title": "Instructions personnalisées spécifiques au mode (optionnel)",
 		"resetToDefault": "Réinitialiser aux valeurs par défaut",
 		"description": "Ajoutez des directives comportementales spécifiques au mode {{modeName}}.",
-		"loadFromFile": "Les instructions personnalisées spécifiques au mode {{mode}} peuvent également être chargées depuis <span>.clinerules-{{slug}}</span> dans votre espace de travail."
+		"loadFromFile": "Les instructions personnalisées spécifiques au mode {{mode}} peuvent également être chargées depuis le dossier <span>.pearai-agent/rules-{{slug}}/</span> dans votre espace de travail (.roorules-{{slug}} et .clinerules-{{slug}} sont obsolètes et cesseront de fonctionner bientôt)."
 	},
 	"globalCustomInstructions": {
 		"title": "Instructions personnalisées pour tous les modes",
-		"description": "Ces instructions s'appliquent à tous les modes. Elles fournissent un ensemble de comportements de base qui peuvent être améliorés par des instructions spécifiques au mode ci-dessous.\nSi vous souhaitez que Roo pense et parle dans une langue différente de celle de votre éditeur ({{language}}), vous pouvez le spécifier ici.",
-		"loadFromFile": "Les instructions peuvent également être chargées depuis <span>.clinerules</span> dans votre espace de travail."
+		"description": "Ces instructions s'appliquent à tous les modes. Elles fournissent un ensemble de comportements de base qui peuvent être améliorés par des instructions spécifiques au mode ci-dessous.\nSi vous souhaitez que Agent pense et parle dans une langue différente de celle de votre éditeur ({{language}}), vous pouvez le spécifier ici.",
+		"loadFromFile": "Les instructions peuvent également être chargées depuis le dossier <span>.pearai-agent/rules/</span> dans votre espace de travail (.roorules et .clinerules sont obsolètes et cesseront de fonctionner bientôt)."
 	},
 	"systemPrompt": {
 		"preview": "Aperçu du prompt système",
@@ -62,7 +63,7 @@
 		"types": {
 			"ENHANCE": {
 				"label": "Améliorer le prompt",
-				"description": "Utilisez l'amélioration de prompt pour obtenir des suggestions ou des améliorations personnalisées pour vos entrées. Cela garantit que Roo comprend votre intention et fournit les meilleures réponses possibles. Disponible via l'icône ✨ dans le chat."
+				"description": "Utilisez l'amélioration de prompt pour obtenir des suggestions ou des améliorations personnalisées pour vos entrées. Cela garantit que Agent comprend votre intention et fournit les meilleures réponses possibles. Disponible via l'icône ✨ dans le chat."
 			},
 			"EXPLAIN": {
 				"label": "Expliquer le code",
@@ -91,16 +92,16 @@
 			"TERMINAL_EXPLAIN": {
 				"label": "Expliquer la commande du terminal",
 				"description": "Obtenez des explications détaillées sur les commandes du terminal et leurs sorties. Disponible dans le menu contextuel du terminal (clic droit sur le contenu sélectionné du terminal)."
+			},
+			"NEW_TASK": {
+				"label": "Démarrer une nouvelle tâche",
+				"description": "Démarre une nouvelle tâche avec ton entrée. Disponible dans la palette de commandes."
 			}
 		}
 	},
-	"customModeCreation": {
-		"enableTitle": "Activer la création de modes personnalisés via les prompts",
-		"description": "Lorsque cette option est activée, Roo vous permet de créer des modes personnalisés en utilisant des prompts comme 'Crée-moi un mode personnalisé qui...'. La désactivation réduit votre prompt système d'environ 700 tokens lorsque cette fonctionnalité n'est pas nécessaire. Lorsqu'elle est désactivée, vous pouvez toujours créer manuellement des modes personnalisés en utilisant le bouton + ci-dessus ou en modifiant le JSON de configuration associé."
-	},
 	"advancedSystemPrompt": {
 		"title": "Avancé : Remplacer le prompt système",
-		"description": "Vous pouvez complètement remplacer le prompt système pour ce mode (en dehors de la définition du rôle et des instructions personnalisées) en créant un fichier à <span>.roo/system-prompt-{{slug}}</span> dans votre espace de travail. Il s'agit d'une fonctionnalité très avancée qui contourne les garanties intégrées et les vérifications de cohérence (notamment concernant l'utilisation des outils), alors soyez prudent !"
+		"description": "Vous pouvez complètement remplacer le prompt système pour ce mode (en dehors de la définition du rôle et des instructions personnalisées) en créant un fichier à <span>.pearai-agent/system-prompt-{{slug}}</span> dans votre espace de travail. Il s'agit d'une fonctionnalité très avancée qui contourne les garanties intégrées et les vérifications de cohérence (notamment concernant l'utilisation des outils), alors soyez prudent !"
 	},
 	"createModeDialog": {
 		"title": "Créer un nouveau mode",
@@ -121,13 +122,13 @@
 				"description": "Disponible dans tous les espaces de travail"
 			},
 			"project": {
-				"label": "Spécifique au projet (.roomodes)",
+				"label": "Spécifique au projet (.pearai-agent-ignore)",
 				"description": "Disponible uniquement dans cet espace de travail, a priorité sur le global"
 			}
 		},
 		"roleDefinition": {
 			"label": "Définition du rôle",
-			"description": "Définissez l'expertise et la personnalité de Roo pour ce mode."
+			"description": "Définissez l'expertise et la personnalité de Agent pour ce mode."
 		},
 		"tools": {
 			"label": "Outils disponibles",
