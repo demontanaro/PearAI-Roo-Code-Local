@@ -50,7 +50,7 @@ import { telemetryService } from "../../services/telemetry/TelemetryService"
 import { getWorkspacePath } from "../../utils/path"
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import { WebviewMessage } from "../../shared/WebviewMessage"
-import { PEARAI_URL } from "../../shared/pearaiApi"
+import { PEARAI_URL, pearaiDefaultModelId, pearaiModels } from "../../shared/pearaiApi"
 import { PearAIAgentModelsConfig } from "../../api/providers/pearai/pearai"
 
 /**
@@ -452,12 +452,20 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	}
 
 	public async getPearAIAgentModels() {
-		const response = await fetch(`${PEARAI_URL}/getPearAIAgentModels`)
-		if (!response.ok) {
-			throw new Error(`Failed to fetch models: ${response.statusText}`)
+		try {
+			const response = await fetch(`${PEARAI_URL}/getPearAIAgentModels`)
+			if (!response.ok) {
+				throw new Error(`Failed to fetch models: ${response.statusText}`)
+			}
+			const data = (await response.json()) as PearAIAgentModelsConfig
+			return data
+		} catch (error) {
+			console.warn("Falling back to bundled PearAI models:", error)
+			return {
+				models: pearaiModels,
+				defaultModelId: pearaiDefaultModelId,
+			} satisfies PearAIAgentModelsConfig
 		}
-		const data = (await response.json()) as PearAIAgentModelsConfig
-		return data
 	}
 
 	public async initClineWithSubTask(parent: Cline, task?: string, images?: string[]) {
@@ -542,7 +550,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 
 	public async initClineWithHistoryItem(
 		historyItem: HistoryItem & { rootTask?: Cline; parentTask?: Cline },
-		options?: { creatorModeConfig?: CreatorModeConfig }
+		options?: { creatorModeConfig?: CreatorModeConfig },
 	) {
 		await this.removeClineFromStack()
 
@@ -828,7 +836,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 				let apiConfig = await this.providerSettingsManager.loadConfig(config.name)
 
 				// Switch to pearai-model-creator model if we are in Creator Mode
-				if (newMode == PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG || newMode.includes('creator')) {
+				if (newMode == PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG || newMode.includes("creator")) {
 					apiConfig = {
 						...apiConfig,
 						apiProvider: "pearai",
@@ -867,7 +875,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			...providerSettings,
 			creatorModeConfig: currentCline?.creatorModeConfig,
 		}
-
 
 		if (mode) {
 			const currentApiConfigName = this.getGlobalState("currentApiConfigName")
@@ -1259,12 +1266,12 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			historyPreviewCollapsed,
 		} = await this.getState()
 
-		const creatorModeConfig = currentCline?.creatorModeConfig;
+		const creatorModeConfig = currentCline?.creatorModeConfig
 		const apiConfiguration = {
-			...baseApiConfiguration
+			...baseApiConfiguration,
 		}
 
-		const telemetryKey = 'phc_EixCfQZYA5It6ZjtZG2C8THsUQzPzXZsdCsvR8AYhfh'
+		const telemetryKey = "phc_EixCfQZYA5It6ZjtZG2C8THsUQzPzXZsdCsvR8AYhfh"
 		const machineId = vscode.env.machineId
 		const allowedCommands = vscode.workspace.getConfiguration("roo-cline").get<string[]>("allowedCommands") || []
 		const cwd = this.cwd

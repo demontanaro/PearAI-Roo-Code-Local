@@ -165,13 +165,17 @@ describe("DeepSeekHandler", () => {
 				...mockOptions,
 				apiModelId: "invalid-model",
 			})
+			const defaultHandler = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: undefined,
+			})
 			const model = handlerWithInvalidModel.getModel()
 			expect(model.id).toBe("invalid-model") // Returns provided ID
 			expect(model.info).toBeDefined()
 			// With the current implementation, it's the same object reference when using default model info
-			expect(model.info).toBe(handler.getModel().info)
+			expect(model.info).toBe(defaultHandler.getModel().info)
 			// Should have the same base properties
-			expect(model.info.contextWindow).toBe(handler.getModel().info.contextWindow)
+			expect(model.info.contextWindow).toBe(defaultHandler.getModel().info.contextWindow)
 			// And should have supportsPromptCache set to true
 			expect(model.info.supportsPromptCache).toBe(true)
 		})

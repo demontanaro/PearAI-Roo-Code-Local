@@ -1,12 +1,18 @@
 import * as vscode from "vscode"
 
-const fadedOverlayDecorationType = vscode.window.createTextEditorDecorationType({
+const createTextEditorDecorationType = (options: vscode.DecorationRenderOptions) =>
+	vscode.window?.createTextEditorDecorationType?.(options) ??
+	({
+		dispose: () => {},
+	} as vscode.TextEditorDecorationType)
+
+const fadedOverlayDecorationType = createTextEditorDecorationType({
 	backgroundColor: "rgba(255, 255, 0, 0.1)",
 	opacity: "0.4",
 	isWholeLine: true,
 })
 
-const activeLineDecorationType = vscode.window.createTextEditorDecorationType({
+const activeLineDecorationType = createTextEditorDecorationType({
 	backgroundColor: "rgba(255, 255, 0, 0.3)",
 	opacity: "1",
 	isWholeLine: true,

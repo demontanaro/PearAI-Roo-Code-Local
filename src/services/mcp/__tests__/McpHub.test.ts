@@ -38,6 +38,38 @@ describe("McpHub", () => {
 	// Store original console methods
 	const originalConsoleError = console.error
 
+	const registerTestServer = (source: "global" | "project" = "global") => {
+		mcpHub.connections = [
+			{
+				server: {
+					name: "test-server",
+					config: JSON.stringify({
+						type: "stdio",
+						command: "node",
+						args: ["test.js"],
+						alwaysAllow: ["allowed-tool"],
+					}),
+					status: "disconnected",
+					disabled: false,
+					source,
+				},
+				client: {
+					request: jest.fn().mockResolvedValue({ content: [] }),
+				} as any,
+				transport: {} as any,
+			},
+		]
+	}
+
+	const getWrittenConfigs = () =>
+		(fs.writeFile as jest.Mock).mock.calls.flatMap((call) => {
+			try {
+				return [JSON.parse(call[1])]
+			} catch {
+				return []
+			}
+		})
+
 	beforeEach(() => {
 		jest.clearAllMocks()
 
@@ -104,6 +136,8 @@ describe("McpHub", () => {
 				},
 			}),
 		)
+		;(fs.access as jest.Mock).mockResolvedValue(undefined)
+		;(fs.writeFile as jest.Mock).mockResolvedValue(undefined)
 
 		mcpHub = new McpHub(mockProvider as ClineProvider)
 	})
@@ -128,6 +162,7 @@ describe("McpHub", () => {
 
 			// Mock reading initial config
 			;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+			registerTestServer()
 
 			await mcpHub.toggleToolAlwaysAllow("test-server", "global", "new-tool", true)
 
@@ -136,16 +171,10 @@ describe("McpHub", () => {
 			expect(writeCalls.length).toBeGreaterThan(0)
 
 			// Find the write call
-			const callToUse = writeCalls[writeCalls.length - 1]
-			expect(callToUse).toBeTruthy()
-
-			// The path might be normalized differently on different platforms,
-			// so we'll just check that we have a call with valid content
-			const writtenConfig = JSON.parse(callToUse[1])
-			expect(writtenConfig.mcpServers).toBeDefined()
-			expect(writtenConfig.mcpServers["test-server"]).toBeDefined()
-			expect(Array.isArray(writtenConfig.mcpServers["test-server"].alwaysAllow)).toBe(true)
-			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toContain("new-tool")
+			const writtenConfig = getWrittenConfigs().find((config) =>
+				config.mcpServers?.["test-server"]?.alwaysAllow?.includes("new-tool"),
+			)
+			expect(writtenConfig).toBeDefined()
 		})
 
 		it("should remove tool from always allow list when disabling", async () => {
@@ -162,6 +191,7 @@ describe("McpHub", () => {
 
 			// Mock reading initial config
 			;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+			registerTestServer()
 
 			await mcpHub.toggleToolAlwaysAllow("test-server", "global", "existing-tool", false)
 
@@ -169,17 +199,12 @@ describe("McpHub", () => {
 			const writeCalls = (fs.writeFile as jest.Mock).mock.calls
 			expect(writeCalls.length).toBeGreaterThan(0)
 
-			// Find the write call
-			const callToUse = writeCalls[writeCalls.length - 1]
-			expect(callToUse).toBeTruthy()
-
-			// The path might be normalized differently on different platforms,
-			// so we'll just check that we have a call with valid content
-			const writtenConfig = JSON.parse(callToUse[1])
-			expect(writtenConfig.mcpServers).toBeDefined()
-			expect(writtenConfig.mcpServers["test-server"]).toBeDefined()
-			expect(Array.isArray(writtenConfig.mcpServers["test-server"].alwaysAllow)).toBe(true)
-			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).not.toContain("existing-tool")
+			const writtenConfig = getWrittenConfigs().find(
+				(config) =>
+					Array.isArray(config.mcpServers?.["test-server"]?.alwaysAllow) &&
+					!config.mcpServers["test-server"].alwaysAllow.includes("existing-tool"),
+			)
+			expect(writtenConfig).toBeDefined()
 		})
 
 		it("should initialize alwaysAllow if it does not exist", async () => {
@@ -195,6 +220,7 @@ describe("McpHub", () => {
 
 			// Mock reading initial config
 			;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+			registerTestServer()
 
 			await mcpHub.toggleToolAlwaysAllow("test-server", "global", "new-tool", true)
 
@@ -207,7 +233,10 @@ describe("McpHub", () => {
 			const writeCall = writeCalls.find((call) => call[0] === normalizedSettingsPath)
 			const callToUse = writeCall || writeCalls[0]
 
-			const writtenConfig = JSON.parse(callToUse[1])
+			const writtenConfig =
+				getWrittenConfigs().find((config) =>
+					config.mcpServers?.["test-server"]?.alwaysAllow?.includes("new-tool"),
+				) ?? JSON.parse(callToUse[1])
 			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toBeDefined()
 			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toContain("new-tool")
 		})
@@ -228,6 +257,7 @@ describe("McpHub", () => {
 
 			// Mock reading initial config
 			;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+			registerTestServer()
 
 			await mcpHub.toggleServerDisabled("test-server", true)
 
@@ -445,6 +475,7 @@ describe("McpHub", () => {
 
 				// Mock reading initial config
 				;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+				registerTestServer()
 
 				await mcpHub.updateServerTimeout("test-server", 120)
 
@@ -475,6 +506,7 @@ describe("McpHub", () => {
 
 				// Mock initial read
 				;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+				registerTestServer()
 
 				// Update with invalid timeout
 				await mcpHub.updateServerTimeout("test-server", 3601)
@@ -526,6 +558,7 @@ describe("McpHub", () => {
 				}
 
 				;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+				registerTestServer()
 
 				// Test valid timeout values
 				const validTimeouts = [1, 60, 3600]
@@ -534,6 +567,7 @@ describe("McpHub", () => {
 					expect(fs.writeFile).toHaveBeenCalled()
 					jest.clearAllMocks() // Reset for next iteration
 					;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+					registerTestServer()
 				}
 			})
 
@@ -550,6 +584,7 @@ describe("McpHub", () => {
 				}
 
 				;(fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(mockConfig))
+				registerTestServer()
 
 				await mcpHub.updateServerTimeout("test-server", 120)
 

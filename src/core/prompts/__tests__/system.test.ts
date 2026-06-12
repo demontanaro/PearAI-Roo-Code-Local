@@ -2,10 +2,12 @@ import * as vscode from "vscode"
 
 import { SYSTEM_PROMPT } from "../system"
 import { McpHub } from "../../../services/mcp/McpHub"
-import { defaultModeSlug, modes, Mode, ModeConfig } from "../../../shared/modes"
+import { getModeConfig, Mode, ModeConfig } from "../../../shared/modes"
 import "../../../utils/path" // Import path utils to get access to toPosix string extension.
 import { addCustomInstructions } from "../sections/custom-instructions"
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
+
+const testModeSlug: Mode = "code"
 
 // Mock the sections
 jest.mock("../sections/modes", () => ({
@@ -49,7 +51,7 @@ __setMockImplementation(
 
 		// Add mode-specific instructions after
 		if (modeCustomInstructions?.trim()) {
-			sections.push(`Mode-specific Instructions:\n${modeCustomInstructions}`)
+			sections.push(`Mode-specific Instructions:\n${modeCustomInstructions.trim()}`)
 		}
 
 		// Add rules
@@ -182,7 +184,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -202,7 +204,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			"1280x800", // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -224,7 +226,7 @@ describe("SYSTEM_PROMPT", () => {
 			mockMcpHub, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -244,7 +246,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // explicitly undefined mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -264,7 +266,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			"900x600", // different viewport size
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -284,7 +286,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			new MultiSearchReplaceDiffStrategy(), // Use actual diff strategy from the codebase
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -305,7 +307,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			new MultiSearchReplaceDiffStrategy(), // Use actual diff strategy from the codebase
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -326,7 +328,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			new MultiSearchReplaceDiffStrategy(), // Use actual diff strategy from the codebase
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -351,7 +353,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -409,7 +411,7 @@ describe("SYSTEM_PROMPT", () => {
 
 	it("should use promptComponent roleDefinition when available", async () => {
 		const customModePrompts = {
-			[defaultModeSlug]: {
+			[testModeSlug]: {
 				roleDefinition: "Custom prompt role definition",
 				customInstructions: "Custom prompt instructions",
 			},
@@ -422,7 +424,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Mode, // mode
+			testModeSlug as Mode, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -433,13 +435,13 @@ describe("SYSTEM_PROMPT", () => {
 
 		// Role definition from promptComponent should be at the top
 		expect(prompt.indexOf("Custom prompt role definition")).toBeLessThan(prompt.indexOf("TOOL USE"))
-		// Should not contain the default mode's role definition
-		expect(prompt).not.toContain(modes[0].roleDefinition)
+		// Should not contain the mode's default role definition when overridden
+		expect(prompt).not.toContain(getModeConfig(testModeSlug).roleDefinition)
 	})
 
 	it("should fallback to modeConfig roleDefinition when promptComponent has no roleDefinition", async () => {
 		const customModePrompts = {
-			[defaultModeSlug]: {
+			[testModeSlug]: {
 				customInstructions: "Custom prompt instructions",
 				// No roleDefinition provided
 			},
@@ -452,7 +454,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Mode, // mode
+			testModeSlug as Mode, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -461,8 +463,8 @@ describe("SYSTEM_PROMPT", () => {
 			false, // enableMcpServerCreation
 		)
 
-		// Should use the default mode's role definition
-		expect(prompt.indexOf(modes[0].roleDefinition)).toBeLessThan(prompt.indexOf("TOOL USE"))
+		// Should use the requested mode's role definition
+		expect(prompt.indexOf(getModeConfig(testModeSlug).roleDefinition)).toBeLessThan(prompt.indexOf("TOOL USE"))
 	})
 
 	afterAll(() => {
@@ -538,7 +540,7 @@ describe("addCustomInstructions", () => {
 			mockMcpHub, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -561,7 +563,7 @@ describe("addCustomInstructions", () => {
 			mockMcpHub, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug, // mode
+			testModeSlug, // mode
 			undefined, // customModePrompts
 			undefined, // customModes,
 			undefined, // globalCustomInstructions
@@ -575,17 +577,17 @@ describe("addCustomInstructions", () => {
 	})
 
 	it("should prioritize mode-specific rules for code mode", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", defaultModeSlug)
+		const instructions = await addCustomInstructions("", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should prioritize mode-specific rules for ask mode", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", modes[2].slug)
+		const instructions = await addCustomInstructions("", "", "/test/path", "ask")
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should prioritize mode-specific rules for architect mode", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", modes[1].slug)
+		const instructions = await addCustomInstructions("", "", "/test/path", "architect")
 		expect(instructions).toMatchSnapshot()
 	})
 
@@ -600,50 +602,41 @@ describe("addCustomInstructions", () => {
 	})
 
 	it("should fall back to generic rules when mode-specific rules not found", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", defaultModeSlug)
+		const instructions = await addCustomInstructions("", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should include preferred language when provided", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", defaultModeSlug, {
+		const instructions = await addCustomInstructions("", "", "/test/path", testModeSlug, {
 			language: "es",
 		})
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should include custom instructions when provided", async () => {
-		const instructions = await addCustomInstructions("Custom test instructions", "", "/test/path", defaultModeSlug)
+		const instructions = await addCustomInstructions("Custom test instructions", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should combine all custom instructions", async () => {
-		const instructions = await addCustomInstructions(
-			"Custom test instructions",
-			"",
-			"/test/path",
-			defaultModeSlug,
-			{ language: "fr" },
-		)
+		const instructions = await addCustomInstructions("Custom test instructions", "", "/test/path", testModeSlug, {
+			language: "fr",
+		})
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should handle undefined mode-specific instructions", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", defaultModeSlug)
+		const instructions = await addCustomInstructions("", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should trim mode-specific instructions", async () => {
-		const instructions = await addCustomInstructions(
-			"  Custom mode instructions  ",
-			"",
-			"/test/path",
-			defaultModeSlug,
-		)
+		const instructions = await addCustomInstructions("  Custom mode instructions  ", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
 	it("should handle empty mode-specific instructions", async () => {
-		const instructions = await addCustomInstructions("", "", "/test/path", defaultModeSlug)
+		const instructions = await addCustomInstructions("", "", "/test/path", testModeSlug)
 		expect(instructions).toMatchSnapshot()
 	})
 
@@ -652,7 +645,7 @@ describe("addCustomInstructions", () => {
 			"Mode-specific instructions",
 			"Global instructions",
 			"/test/path",
-			defaultModeSlug,
+			testModeSlug,
 		)
 		expect(instructions).toMatchSnapshot()
 	})
@@ -662,7 +655,7 @@ describe("addCustomInstructions", () => {
 			"Second instruction",
 			"First instruction",
 			"/test/path",
-			defaultModeSlug,
+			testModeSlug,
 		)
 
 		const instructionParts = instructions.split("\n\n")

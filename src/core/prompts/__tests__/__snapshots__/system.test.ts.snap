@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`SYSTEM_PROMPT should exclude diff strategy tool description when diffEnabled is false 1`] = `
-"You are PearAI (Powered by Roo Code / Cline), a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
+"You are PearAI Agent (Powered by Roo Code / Cline), a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
 
 ====
 
@@ -70,19 +70,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -564,19 +551,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -1044,19 +1018,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -1510,19 +1471,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -2046,19 +1994,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -2608,19 +2543,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -3144,19 +3066,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -3231,9 +3140,6 @@ Parameters:
 
 Diff format:
 \`\`\`
-<<<<<<< HEAD
-[new content to replace with]
-=======
 <<<<<<< SEARCH
 :start_line: (required) The line number of original content where the search block starts.
 -------
@@ -3242,7 +3148,6 @@ Diff format:
 [new content to replace with]
 >>>>>>> REPLACE
 
->>>>>>> 6db1c5a6d17bee8d13cf22b76fb827a25ab4ecf2
 \`\`\`
 
 
@@ -3259,11 +3164,6 @@ Original file:
 
 Search/Replace content:
 \`\`\`
-<<<<<<< HEAD
-def calculate_total(items):
-    """Calculate total with 10% markup"""
-    return sum(item * 1.1 for item in items)
-=======
 <<<<<<< SEARCH
 :start_line:1
 -------
@@ -3278,7 +3178,6 @@ def calculate_total(items):
     return sum(item * 1.1 for item in items)
 >>>>>>> REPLACE
 
->>>>>>> 6db1c5a6d17bee8d13cf22b76fb827a25ab4ecf2
 \`\`\`
 
 Search/Replace content with multi edits:
@@ -3710,19 +3609,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -4232,19 +4118,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -4803,19 +4676,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -5274,19 +5134,6 @@ Example: Requesting instructions to create an MCP Server
 <task>create_mcp_server</task>
 </fetch_instructions>
 
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
-
 ## search_files
 Description: Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
 Parameters:
@@ -5648,19 +5495,6 @@ Examples:
 </read_file>
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
-
-## fetch_instructions
-Description: Request to fetch instructions to perform a task
-Parameters:
-- task: (required) The task to get instructions for.  This can take the following values:
-  create_mcp_server
-  create_mode
-
-Example: Requesting instructions to create an MCP Server
-
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>
 
 ## fetch_instructions
 Description: Request to fetch instructions to perform a task
@@ -6267,7 +6101,7 @@ USER'S CUSTOM INSTRUCTIONS
 The following additional instructions are provided by the user, and should be followed to the best of your ability without interfering with the TOOL USE guidelines.
 
 Mode-specific Instructions:
-  Custom mode instructions
+Custom mode instructions
 
 Rules:
 # Rules from .clinerules-code:

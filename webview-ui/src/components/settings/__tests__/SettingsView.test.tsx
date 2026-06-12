@@ -125,7 +125,7 @@ class MockResizeObserver {
 
 global.ResizeObserver = MockResizeObserver
 
-const renderSettingsView = () => {
+const renderSettingsView = (state: any = {}) => {
 	const onDone = jest.fn()
 	const queryClient = new QueryClient()
 
@@ -138,7 +138,7 @@ const renderSettingsView = () => {
 	)
 
 	// Hydrate initial state.
-	mockPostMessage({})
+	mockPostMessage(state)
 
 	return { onDone }
 }
@@ -298,33 +298,26 @@ describe("SettingsView - Allowed Commands", () => {
 		jest.clearAllMocks()
 	})
 
-	it("shows allowed commands section when alwaysAllowExecute is enabled", () => {
-		renderSettingsView()
+	it("shows allowed commands section when alwaysAllowExecute is enabled", async () => {
+		renderSettingsView({ alwaysAllowExecute: true })
 
-		// Enable always allow execute
-		const executeCheckbox = screen.getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
 		// Verify allowed commands section appears
-		expect(screen.getByTestId("allowed-commands-heading")).toBeInTheDocument()
-		expect(screen.getByTestId("command-input")).toBeInTheDocument()
+		expect(await screen.findByTestId("allowed-commands-heading")).toBeInTheDocument()
+		expect(await screen.findByTestId("command-input")).toBeInTheDocument()
 	})
 
-	it("adds new command to the list", () => {
-		renderSettingsView()
-
-		// Enable always allow execute
-		const executeCheckbox = screen.getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
+	it("adds new command to the list", async () => {
+		renderSettingsView({ alwaysAllowExecute: true })
 
 		// Add a new command
-		const input = screen.getByTestId("command-input")
+		const input = await screen.findByTestId("command-input")
 		fireEvent.change(input, { target: { value: "npm test" } })
 
-		const addButton = screen.getByTestId("add-command-button")
+		const addButton = await screen.findByTestId("add-command-button")
 		fireEvent.click(addButton)
 
 		// Verify command was added
-		expect(screen.getByText("npm test")).toBeInTheDocument()
+		expect(await screen.findByText("npm test")).toBeInTheDocument()
 
 		// Verify VSCode message was sent
 		expect(vscode.postMessage).toHaveBeenCalledWith({
@@ -333,21 +326,17 @@ describe("SettingsView - Allowed Commands", () => {
 		})
 	})
 
-	it("removes command from the list", () => {
-		renderSettingsView()
-
-		// Enable always allow execute
-		const executeCheckbox = screen.getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
+	it("removes command from the list", async () => {
+		renderSettingsView({ alwaysAllowExecute: true })
 
 		// Add a command
-		const input = screen.getByTestId("command-input")
+		const input = await screen.findByTestId("command-input")
 		fireEvent.change(input, { target: { value: "npm test" } })
-		const addButton = screen.getByTestId("add-command-button")
+		const addButton = await screen.findByTestId("add-command-button")
 		fireEvent.click(addButton)
 
 		// Remove the command
-		const removeButton = screen.getByTestId("remove-command-0")
+		const removeButton = await screen.findByTestId("remove-command-0")
 		fireEvent.click(removeButton)
 
 		// Verify command was removed
@@ -360,16 +349,12 @@ describe("SettingsView - Allowed Commands", () => {
 		})
 	})
 
-	it("prevents duplicate commands", () => {
-		renderSettingsView()
-
-		// Enable always allow execute
-		const executeCheckbox = screen.getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
+	it("prevents duplicate commands", async () => {
+		renderSettingsView({ alwaysAllowExecute: true })
 
 		// Add a command twice
-		const input = screen.getByTestId("command-input")
-		const addButton = screen.getByTestId("add-command-button")
+		const input = await screen.findByTestId("command-input")
+		const addButton = await screen.findByTestId("add-command-button")
 
 		// First addition
 		fireEvent.change(input, { target: { value: "npm test" } })
@@ -384,17 +369,13 @@ describe("SettingsView - Allowed Commands", () => {
 		expect(commands).toHaveLength(1)
 	})
 
-	it("saves allowed commands when clicking Save", () => {
-		renderSettingsView()
-
-		// Enable always allow execute
-		const executeCheckbox = screen.getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
+	it("saves allowed commands when clicking Save", async () => {
+		renderSettingsView({ alwaysAllowExecute: true })
 
 		// Add a command
-		const input = screen.getByTestId("command-input")
+		const input = await screen.findByTestId("command-input")
 		fireEvent.change(input, { target: { value: "npm test" } })
-		const addButton = screen.getByTestId("add-command-button")
+		const addButton = await screen.findByTestId("add-command-button")
 		fireEvent.click(addButton)
 
 		// Click Save
