@@ -31,6 +31,7 @@ jest.mock("fs/promises", () => ({
 
 // Mock os module
 jest.mock("os", () => ({
+	...jest.requireActual("os"),
 	homedir: jest.fn(() => "/mock/home"),
 }))
 

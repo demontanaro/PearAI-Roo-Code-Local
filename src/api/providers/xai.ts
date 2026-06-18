@@ -11,6 +11,24 @@ import { BaseProvider } from "./base-provider"
 
 const XAI_DEFAULT_TEMPERATURE = 0
 
+const toXAIReasoningEffort = (
+	effort?: ApiHandlerOptions["reasoningEffort"],
+): OpenAI.Chat.ChatCompletionReasoningEffort | "none" | undefined => {
+	if (effort === "none") {
+		return "none"
+	}
+
+	if (effort === "low" || effort === "medium" || effort === "high") {
+		return effort
+	}
+
+	if (effort === "xhigh") {
+		return "high"
+	}
+
+	return undefined
+}
+
 export class XAIHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
@@ -38,7 +56,7 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 		return {
 			id,
 			info: xaiModels[id],
-			reasoningEffort: supportsReasoning ? this.options.reasoningEffort : undefined,
+			reasoningEffort: supportsReasoning ? toXAIReasoningEffort(this.options.reasoningEffort) : undefined,
 		}
 	}
 

@@ -13,6 +13,12 @@ import { BaseProvider } from "./base-provider"
 import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "./constants"
 import { SingleCompletionHandler, getModelParams } from "../index"
 
+const ANTHROPIC_MODELS_WITHOUT_SAMPLING_PARAMS = new Set(["claude-fable-5", "claude-opus-4-8", "claude-sonnet-4-6"])
+
+function omitsSamplingParams(modelId: string) {
+	return ANTHROPIC_MODELS_WITHOUT_SAMPLING_PARAMS.has(modelId) || modelId.startsWith("claude-opus-4-7")
+}
+
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	private client: Anthropic
@@ -34,8 +40,16 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
 		let { id: modelId, maxTokens, thinking, temperature, virtualId } = this.getModel()
+		let requestTemperature: number | undefined = temperature
+		if (omitsSamplingParams(modelId)) {
+			requestTemperature = undefined
+		}
 
 		switch (modelId) {
+			case "claude-fable-5":
+			case "claude-opus-4-8":
+			case "claude-sonnet-4-6":
+			case "claude-haiku-4-5-20251001":
 			case "claude-3-7-sonnet-20250219":
 			case "claude-3-5-sonnet-20241022":
 			case "claude-3-5-haiku-20241022":
@@ -63,7 +77,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					{
 						model: modelId,
 						max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-						temperature,
+						temperature: requestTemperature,
 						thinking,
 						// Setting cache breakpoint for system prompt so new tasks can reuse it.
 						system: [{ text: systemPrompt, type: "text", cache_control: cacheControl }],
@@ -129,7 +143,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				stream = (await this.client.messages.create({
 					model: modelId,
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-					temperature,
+					temperature: requestTemperature,
 					system: [{ text: systemPrompt, type: "text" }],
 					messages,
 					stream: true,
@@ -273,12 +287,16 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 
 	async completePrompt(prompt: string) {
 		let { id: model, temperature } = this.getModel()
+		let requestTemperature: number | undefined = temperature
+		if (omitsSamplingParams(model)) {
+			requestTemperature = undefined
+		}
 
 		const message = await this.client.messages.create({
 			model,
 			max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
 			thinking: undefined,
-			temperature,
+			temperature: requestTemperature,
 			messages: [{ role: "user", content: prompt }],
 			stream: false,
 		})

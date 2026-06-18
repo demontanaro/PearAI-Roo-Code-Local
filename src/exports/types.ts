@@ -69,7 +69,7 @@ type ProviderSettings = {
 				cacheWritesPrice?: number | undefined
 				cacheReadsPrice?: number | undefined
 				description?: string | undefined
-				reasoningEffort?: ("low" | "medium" | "high") | undefined
+				reasoningEffort?: ("none" | "low" | "medium" | "high" | "xhigh") | undefined
 				thinking?: boolean | undefined
 				minTokensPerCachePoint?: number | undefined
 				maxCachePoints?: number | undefined
@@ -126,7 +126,7 @@ type ProviderSettings = {
 	modelMaxTokens?: number | undefined
 	modelMaxThinkingTokens?: number | undefined
 	includeMaxTokens?: boolean | undefined
-	reasoningEffort?: ("low" | "medium" | "high") | undefined
+	reasoningEffort?: ("none" | "low" | "medium" | "high" | "xhigh") | undefined
 	promptCachingEnabled?: boolean | undefined
 	diffEnabled?: boolean | undefined
 	fuzzyMatchThreshold?: number | undefined
@@ -150,7 +150,7 @@ type ProviderSettings = {
 				cacheWritesPrice?: number | undefined
 				cacheReadsPrice?: number | undefined
 				description?: string | undefined
-				reasoningEffort?: ("low" | "medium" | "high") | undefined
+				reasoningEffort?: ("none" | "low" | "medium" | "high" | "xhigh") | undefined
 				thinking?: boolean | undefined
 				minTokensPerCachePoint?: number | undefined
 				maxCachePoints?: number | undefined
@@ -183,7 +183,7 @@ type ProviderSettings = {
 						cacheWritesPrice?: number | undefined
 						cacheReadsPrice?: number | undefined
 						description?: string | undefined
-						reasoningEffort?: ("low" | "medium" | "high") | undefined
+						reasoningEffort?: ("none" | "low" | "medium" | "high" | "xhigh") | undefined
 						thinking?: boolean | undefined
 						minTokensPerCachePoint?: number | undefined
 						maxCachePoints?: number | undefined

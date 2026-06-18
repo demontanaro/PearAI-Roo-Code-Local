@@ -60,6 +60,10 @@ const vscode = {
 		Workspace: 2,
 		WorkspaceFolder: 3,
 	},
+	CodeActionKind: {
+		QuickFix: { value: "quickfix" },
+		RefactorRewrite: { value: "refactor.rewrite" },
+	},
 	Position: class {
 		constructor(line, character) {
 			this.line = line

@@ -145,7 +145,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				messages: convertedMessages,
 				stream: true as const,
 				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
-				reasoning_effort: this.getModel().info.reasoningEffort,
+				reasoning_effort: this.getChatReasoningEffort(),
 			}
 
 			if (this.options.includeMaxTokens) {
@@ -288,7 +288,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					],
 					stream: true,
 					...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
-					reasoning_effort: this.getModel().info.reasoningEffort,
+					reasoning_effort: this.getChatReasoningEffort(),
 				},
 				methodIsAzureAiInference ? { path: AZURE_AI_INFERENCE_PATH } : {},
 			)
@@ -357,6 +357,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	private _isAzureAiInference(baseUrl?: string): boolean {
 		const urlHost = this._getUrlHost(baseUrl)
 		return urlHost.endsWith(".services.ai.azure.com")
+	}
+
+	private getChatReasoningEffort(): OpenAI.Chat.ChatCompletionReasoningEffort | undefined {
+		return this.getModel().info.reasoningEffort as OpenAI.Chat.ChatCompletionReasoningEffort | undefined
 	}
 }
 

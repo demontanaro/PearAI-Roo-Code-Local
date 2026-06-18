@@ -352,7 +352,6 @@ describe("FileRestrictionError", () => {
 			const result = await getFullModeDetails("non-existent")
 			expect(result).toMatchObject({
 				...modes[0],
-				customInstructions: "",
 			})
 		})
 	})

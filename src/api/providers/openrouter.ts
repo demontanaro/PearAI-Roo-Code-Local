@@ -25,17 +25,34 @@ import { getModels } from "./fetchers/cache"
 
 const OPENROUTER_DEFAULT_PROVIDER_NAME = "[default]"
 
-// Add custom interface for OpenRouter params.
-type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
+type OpenRouterReasoningEffort = "high" | "medium" | "low"
+
+type OpenRouterExtraParams = {
 	transforms?: string[]
 	include_reasoning?: boolean
 	thinking?: BetaThinkingConfigParam
 	// https://openrouter.ai/docs/use-cases/reasoning-tokens
 	reasoning?: {
-		effort?: "high" | "medium" | "low"
+		effort?: OpenRouterReasoningEffort
 		max_tokens?: number
 		exclude?: boolean
 	}
+}
+
+type OpenRouterChatCompletionStreamingParams = OpenAI.Chat.ChatCompletionCreateParamsStreaming & OpenRouterExtraParams
+type OpenRouterChatCompletionNonStreamingParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming &
+	OpenRouterExtraParams
+
+const toOpenRouterReasoningEffort = (effort?: string): OpenRouterReasoningEffort | undefined => {
+	if (effort === "low" || effort === "medium" || effort === "high") {
+		return effort
+	}
+
+	if (effort === "xhigh") {
+		return "high"
+	}
+
+	return undefined
 }
 
 // See `OpenAI.Chat.Completions.ChatCompletionChunk["usage"]`
@@ -104,7 +121,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		// https://openrouter.ai/docs/transforms
-		const completionParams: OpenRouterChatCompletionParams = {
+		const openRouterReasoningEffort = toOpenRouterReasoningEffort(reasoningEffort)
+		const completionParams: OpenRouterChatCompletionStreamingParams = {
 			model: modelId,
 			max_tokens: maxTokens,
 			temperature,
@@ -120,7 +138,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}),
 			// This way, the transforms field will only be included in the parameters when openRouterUseMiddleOutTransform is true.
 			...((this.options.openRouterUseMiddleOutTransform ?? true) && { transforms: ["middle-out"] }),
-			...(REASONING_MODELS.has(modelId) && reasoningEffort && { reasoning: { effort: reasoningEffort } }),
+			...(REASONING_MODELS.has(modelId) &&
+				openRouterReasoningEffort && {
+					reasoning: { effort: openRouterReasoningEffort },
+				}),
 		}
 
 		const stream = await this.client.chat.completions.create(completionParams)
@@ -195,7 +216,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	async completePrompt(prompt: string) {
 		let { id: modelId, maxTokens, thinking, temperature } = await this.fetchModel()
 
-		const completionParams: OpenRouterChatCompletionParams = {
+		const completionParams: OpenRouterChatCompletionNonStreamingParams = {
 			model: modelId,
 			max_tokens: maxTokens,
 			thinking,

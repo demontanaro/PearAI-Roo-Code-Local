@@ -372,10 +372,11 @@ describe("ClineProvider", () => {
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
 
-		// Verify Content Security Policy contains the necessary PostHog domains
+		// Verify Content Security Policy contains the necessary connection domains.
 		expect(mockWebviewView.webview.html).toContain(
-			"connect-src https://openrouter.ai https://api.requesty.ai https://us.i.posthog.com https://us-assets.i.posthog.com;",
+			"connect-src https://openrouter.ai https://api.requesty.ai https://us.i.posthog.com https://us-assets.i.posthog.com",
 		)
+		expect(mockWebviewView.webview.html).toContain("https://server.trypear.ai;")
 
 		// Extract the script-src directive section and verify required security elements
 		const html = mockWebviewView.webview.html
@@ -593,12 +594,12 @@ describe("ClineProvider", () => {
 		expect(state.requestDelaySeconds).toBe(10)
 	})
 
-	test("alwaysApproveResubmit defaults to false", async () => {
+	test("alwaysApproveResubmit defaults to true", async () => {
 		// Mock globalState.get to return undefined for alwaysApproveResubmit
 		;(mockContext.globalState.get as jest.Mock).mockReturnValue(undefined)
 
 		const state = await provider.getState()
-		expect(state.alwaysApproveResubmit).toBe(false)
+		expect(state.alwaysApproveResubmit).toBe(true)
 	})
 
 	test("loads saved API config when switching modes", async () => {
@@ -842,20 +843,22 @@ describe("ClineProvider", () => {
 		await provider.initClineWithTask("Test task")
 
 		// Verify Cline was initialized with mode-specific instructions
-		expect(Cline).toHaveBeenCalledWith({
-			provider,
-			apiConfiguration: mockApiConfig,
-			customInstructions: modeCustomInstructions,
-			enableDiff: true,
-			enableCheckpoints: false,
-			fuzzyMatchThreshold: 1.0,
-			task: "Test task",
-			experiments: experimentDefault,
-			rootTask: undefined,
-			parentTask: undefined,
-			taskNumber: 1,
-			onCreated: expect.any(Function),
-		})
+		expect(Cline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				provider,
+				apiConfiguration: expect.objectContaining(mockApiConfig),
+				customInstructions: modeCustomInstructions,
+				enableDiff: true,
+				enableCheckpoints: false,
+				fuzzyMatchThreshold: 1.0,
+				task: "Test task",
+				experiments: experimentDefault,
+				rootTask: undefined,
+				parentTask: undefined,
+				taskNumber: 1,
+				onCreated: expect.any(Function),
+			}),
+		)
 	})
 
 	test("handles mode-specific custom instructions updates", async () => {

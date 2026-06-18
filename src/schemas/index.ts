@@ -89,7 +89,7 @@ export type TelemetrySetting = z.infer<typeof telemetrySettingsSchema>
  * ReasoningEffort
  */
 
-export const reasoningEfforts = ["low", "medium", "high"] as const
+export const reasoningEfforts = ["none", "low", "medium", "high", "xhigh"] as const
 
 export const reasoningEffortsSchema = z.enum(reasoningEfforts)
 
@@ -215,7 +215,7 @@ export const modeConfigSchema = z.object({
 	customInstructions: z.string().optional(),
 	groups: groupEntryArraySchema,
 	source: z.enum(["global", "project"]).optional(),
-	backendOnly: z.boolean().optional()
+	backendOnly: z.boolean().optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>
@@ -328,7 +328,7 @@ export const creatorModeConfigSchema = z.object({
 	creatorMode: z.boolean().optional(),
 	newProjectType: z.string().optional(),
 	newProjectPath: z.string().optional(),
-});
+})
 
 export type CreatorModeConfig = z.infer<typeof creatorModeConfigSchema>
 

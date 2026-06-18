@@ -279,7 +279,7 @@ export class PearAIGenericHandler extends BaseProvider implements SingleCompleti
 				],
 				stream: true,
 				stream_options: { include_usage: true },
-				reasoning_effort: this.getModel().info.reasoningEffort,
+				reasoning_effort: this.getChatReasoningEffort(),
 			})
 
 			yield* this.handleStreamResponse(stream)
@@ -324,6 +324,10 @@ export class PearAIGenericHandler extends BaseProvider implements SingleCompleti
 				}
 			}
 		}
+	}
+
+	private getChatReasoningEffort(): OpenAI.Chat.ChatCompletionReasoningEffort | undefined {
+		return this.getModel().info.reasoningEffort as OpenAI.Chat.ChatCompletionReasoningEffort | undefined
 	}
 }
 

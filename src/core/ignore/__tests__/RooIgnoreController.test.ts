@@ -70,10 +70,10 @@ describe("RooIgnoreController", () => {
 
 	describe("initialization", () => {
 		/**
-		 * Tests the controller initialization when .rooignore exists
+		 * Tests the controller initialization when .pearai-agent-ignore exists
 		 */
-		it("should load .rooignore patterns on initialization when file exists", async () => {
-			// Setup mocks to simulate existing .rooignore file
+		it("should load .pearai-agent-ignore patterns on initialization when file exists", async () => {
+			// Setup mocks to simulate existing .pearai-agent-ignore file
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules\n.git\nsecrets.json")
 
@@ -81,8 +81,8 @@ describe("RooIgnoreController", () => {
 			await controller.initialize()
 
 			// Verify file was checked and read
-			expect(mockFileExists).toHaveBeenCalledWith(path.join(TEST_CWD, ".rooignore"))
-			expect(mockReadFile).toHaveBeenCalledWith(path.join(TEST_CWD, ".rooignore"), "utf8")
+			expect(mockFileExists).toHaveBeenCalledWith(path.join(TEST_CWD, ".pearai-agent-ignore"))
+			expect(mockReadFile).toHaveBeenCalledWith(path.join(TEST_CWD, ".pearai-agent-ignore"), "utf8")
 
 			// Verify content was stored
 			expect(controller.rooIgnoreContent).toBe("node_modules\n.git\nsecrets.json")
@@ -95,10 +95,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests the controller behavior when .rooignore doesn't exist
+		 * Tests the controller behavior when .pearai-agent-ignore doesn't exist
 		 */
-		it("should allow all access when .rooignore doesn't exist", async () => {
-			// Setup mocks to simulate missing .rooignore file
+		it("should allow all access when .pearai-agent-ignore doesn't exist", async () => {
+			// Setup mocks to simulate missing .pearai-agent-ignore file
 			mockFileExists.mockResolvedValue(false)
 
 			// Initialize controller
@@ -115,12 +115,12 @@ describe("RooIgnoreController", () => {
 		/**
 		 * Tests the file watcher setup
 		 */
-		it("should set up file watcher for .rooignore changes", async () => {
+		it("should set up file watcher for .pearai-agent-ignore changes", async () => {
 			// Check that watcher was created with correct pattern
 			expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledWith(
 				expect.objectContaining({
 					base: TEST_CWD,
-					pattern: ".rooignore",
+					pattern: ".pearai-agent-ignore",
 				}),
 			)
 
@@ -133,7 +133,7 @@ describe("RooIgnoreController", () => {
 		/**
 		 * Tests error handling during initialization
 		 */
-		it("should handle errors when loading .rooignore", async () => {
+		it("should handle errors when loading .pearai-agent-ignore", async () => {
 			// Setup mocks to simulate error
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockRejectedValue(new Error("Test file read error"))
@@ -145,7 +145,7 @@ describe("RooIgnoreController", () => {
 			await controller.initialize()
 
 			// Verify error was logged
-			expect(consoleSpy).toHaveBeenCalledWith("Unexpected error loading .rooignore:", expect.any(Error))
+			expect(consoleSpy).toHaveBeenCalledWith("Unexpected error loading .pearai-agent-ignore:", expect.any(Error))
 
 			// Cleanup
 			consoleSpy.mockRestore()
@@ -154,7 +154,7 @@ describe("RooIgnoreController", () => {
 
 	describe("validateAccess", () => {
 		beforeEach(async () => {
-			// Setup .rooignore content
+			// Setup .pearai-agent-ignore content
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules\n.git\nsecrets/**\n*.log")
 			await controller.initialize()
@@ -202,10 +202,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests the default behavior when no .rooignore exists
+		 * Tests the default behavior when no .pearai-agent-ignore exists
 		 */
-		it("should allow all access when no .rooignore content", async () => {
-			// Create a new controller with no .rooignore
+		it("should allow all access when no .pearai-agent-ignore content", async () => {
+			// Create a new controller with no .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(false)
 			const emptyController = new RooIgnoreController(TEST_CWD)
 			await emptyController.initialize()
@@ -219,7 +219,7 @@ describe("RooIgnoreController", () => {
 
 	describe("validateCommand", () => {
 		beforeEach(async () => {
-			// Setup .rooignore content
+			// Setup .pearai-agent-ignore content
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules\n.git\nsecrets/**\n*.log")
 			await controller.initialize()
@@ -274,10 +274,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests behavior when no .rooignore exists
+		 * Tests behavior when no .pearai-agent-ignore exists
 		 */
-		it("should allow all commands when no .rooignore exists", async () => {
-			// Create a new controller with no .rooignore
+		it("should allow all commands when no .pearai-agent-ignore exists", async () => {
+			// Create a new controller with no .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(false)
 			const emptyController = new RooIgnoreController(TEST_CWD)
 			await emptyController.initialize()
@@ -290,7 +290,7 @@ describe("RooIgnoreController", () => {
 
 	describe("filterPaths", () => {
 		beforeEach(async () => {
-			// Setup .rooignore content
+			// Setup .pearai-agent-ignore content
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules\n.git\nsecrets/**\n*.log")
 			await controller.initialize()
@@ -353,10 +353,10 @@ describe("RooIgnoreController", () => {
 
 	describe("getInstructions", () => {
 		/**
-		 * Tests instructions generation with .rooignore
+		 * Tests instructions generation with .pearai-agent-ignore
 		 */
-		it("should generate formatted instructions when .rooignore exists", async () => {
-			// Setup .rooignore content
+		it("should generate formatted instructions when .pearai-agent-ignore exists", async () => {
+			// Setup .pearai-agent-ignore content
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules\n.git\nsecrets/**")
 			await controller.initialize()
@@ -364,7 +364,7 @@ describe("RooIgnoreController", () => {
 			const instructions = controller.getInstructions()
 
 			// Verify instruction format
-			expect(instructions).toContain("# .rooignore")
+			expect(instructions).toContain("# .pearai-agent-ignore")
 			expect(instructions).toContain(LOCK_TEXT_SYMBOL)
 			expect(instructions).toContain("node_modules")
 			expect(instructions).toContain(".git")
@@ -372,10 +372,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests behavior when no .rooignore exists
+		 * Tests behavior when no .pearai-agent-ignore exists
 		 */
-		it("should return undefined when no .rooignore exists", async () => {
-			// Setup no .rooignore
+		it("should return undefined when no .pearai-agent-ignore exists", async () => {
+			// Setup no .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(false)
 			await controller.initialize()
 
@@ -408,10 +408,10 @@ describe("RooIgnoreController", () => {
 
 	describe("file watcher", () => {
 		/**
-		 * Tests behavior when .rooignore is created
+		 * Tests behavior when .pearai-agent-ignore is created
 		 */
-		it("should reload .rooignore when file is created", async () => {
-			// Setup initial state without .rooignore
+		it("should reload .pearai-agent-ignore when file is created", async () => {
+			// Setup initial state without .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(false)
 			await controller.initialize()
 
@@ -422,7 +422,7 @@ describe("RooIgnoreController", () => {
 			// Setup for the test
 			mockFileExists.mockResolvedValue(false) // Initially no file exists
 
-			// Create and initialize controller with no .rooignore
+			// Create and initialize controller with no .pearai-agent-ignore
 			controller = new RooIgnoreController(TEST_CWD)
 			await controller.initialize()
 
@@ -433,7 +433,7 @@ describe("RooIgnoreController", () => {
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules")
 
-			// Force reload of .rooignore content manually
+			// Force reload of .pearai-agent-ignore content manually
 			await controller.initialize()
 
 			// Now verify content was updated
@@ -444,10 +444,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests behavior when .rooignore is changed
+		 * Tests behavior when .pearai-agent-ignore is changed
 		 */
-		it("should reload .rooignore when file is changed", async () => {
-			// Setup initial state with .rooignore
+		it("should reload .pearai-agent-ignore when file is changed", async () => {
+			// Setup initial state with .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules")
 			await controller.initialize()
@@ -472,10 +472,10 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
-		 * Tests behavior when .rooignore is deleted
+		 * Tests behavior when .pearai-agent-ignore is deleted
 		 */
-		it("should reset when .rooignore is deleted", async () => {
-			// Setup initial state with .rooignore
+		it("should reset when .pearai-agent-ignore is deleted", async () => {
+			// Setup initial state with .pearai-agent-ignore
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockResolvedValue("node_modules")
 			await controller.initialize()

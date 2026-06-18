@@ -4,7 +4,9 @@ import { isToolAllowedForMode, modes, ModeConfig } from "../../shared/modes"
 import { TOOL_GROUPS } from "../../shared/tools"
 import { validateToolUse } from "../mode-validator"
 
-const [codeMode, architectMode, askMode] = modes.map((mode) => mode.slug)
+const codeMode = modes.find((mode) => mode.slug === "code")!.slug
+const architectMode = modes.find((mode) => mode.slug === "architect")!.slug
+const askMode = modes.find((mode) => mode.slug === "ask")!.slug
 
 describe("mode-validator", () => {
 	describe("isToolAllowedForMode", () => {

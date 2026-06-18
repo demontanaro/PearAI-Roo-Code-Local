@@ -401,15 +401,13 @@ describe("Cline", () => {
 			})
 
 			it("should clean conversation history before sending to API", async () => {
-				// Cline.create will now use our mocked getEnvironmentDetails
-				const [cline, task] = Cline.create({
+				const cline = new Cline({
 					provider: mockProvider,
 					apiConfiguration: mockApiConfig,
 					task: "test task",
+					startTask: false,
+					enableCheckpoints: false,
 				})
-
-				cline.abandoned = true
-				await task
 
 				// Set up mock stream.
 				const mockStreamForClean = (async function* () {

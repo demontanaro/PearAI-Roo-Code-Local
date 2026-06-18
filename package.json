@@ -409,7 +409,7 @@
 		"monaco-vscode-textmate-theme-converter": "^0.1.7",
 		"node-cache": "^5.1.2",
 		"node-ipc": "^12.0.0",
-		"openai": "^4.78.1",
+		"openai": "^6.42.0",
 		"os-name": "^6.0.0",
 		"p-wait-for": "^5.0.2",
 		"pdf-parse": "^1.1.1",
@@ -435,7 +435,7 @@
 		"vscode-material-icons": "^0.1.1",
 		"web-tree-sitter": "^0.22.6",
 		"workerpool": "^9.2.0",
-		"zod": "^3.23.8"
+		"zod": "^3.25.76"
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.27.10",
