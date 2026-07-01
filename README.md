@@ -64,8 +64,7 @@ This fork replaces those runtime dependencies with a local-first path that works
 1. Central local backend configuration
 
 - Added a single configuration source at src/shared/backendConfig.ts.
-- Default backend is now portable and public-safe: http://localhost:8080/v1.
-- No personal LAN host is hardcoded anymore.
+- Default backend is: http://localhost:8080/v1.
 
 2. PearAI provider path refactored to local provider
 
@@ -130,7 +129,6 @@ In extension settings (provider = pearai), set Local OpenAI-compatible Base URL 
 ### Validation Status
 
 - Build and VSIX packaging pass in this fork.
-- The maintainer validated successful runtime behavior via VSIX installation.
 - Since local backends vary, users should still verify compatibility with their specific server/model setup.
 
 ### Compatibility Notes
