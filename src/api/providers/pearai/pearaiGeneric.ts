@@ -25,8 +25,7 @@ import { calculateApiCostOpenAI } from "../../../utils/cost"
 const DEEP_SEEK_DEFAULT_TEMPERATURE = 0.6
 
 export const defaultHeaders = {
-	"HTTP-Referer": "https://trypear.ai",
-	"X-Title": "PearAI",
+	"X-Title": "Local OpenAI Compatible",
 }
 
 export interface OpenAiHandlerOptions extends ApiHandlerOptions {}

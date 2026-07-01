@@ -50,8 +50,14 @@ import { telemetryService } from "../../services/telemetry/TelemetryService"
 import { getWorkspacePath } from "../../utils/path"
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import { WebviewMessage } from "../../shared/WebviewMessage"
-import { PEARAI_URL, pearaiDefaultModelId, pearaiModels } from "../../shared/pearaiApi"
-import { PearAIAgentModelsConfig } from "../../api/providers/pearai/pearai"
+import {
+	PEARAI_URL,
+	pearaiDefaultModelId,
+	buildPearAIAgentModelsConfig,
+	fetchOpenAICompatibleModelIds,
+	PearAIAgentModelsConfig,
+} from "../../shared/pearaiApi"
+import { ENABLE_TELEMETRY, LOCAL_API_ORIGIN } from "../../shared/backendConfig"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -451,20 +457,13 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		this.log("Webview view resolved")
 	}
 
-	public async getPearAIAgentModels() {
+	public async getLocalAgentModels() {
 		try {
-			const response = await fetch(`${PEARAI_URL}/getPearAIAgentModels`)
-			if (!response.ok) {
-				throw new Error(`Failed to fetch models: ${response.statusText}`)
-			}
-			const data = (await response.json()) as PearAIAgentModelsConfig
-			return data
+			const modelIds = await fetchOpenAICompatibleModelIds(PEARAI_URL)
+			return buildPearAIAgentModelsConfig(modelIds)
 		} catch (error) {
-			console.warn("Falling back to bundled PearAI models:", error)
-			return {
-				models: pearaiModels,
-				defaultModelId: pearaiDefaultModelId,
-			} satisfies PearAIAgentModelsConfig
+			console.warn("Falling back to local default model list:", error)
+			return buildPearAIAgentModelsConfig([])
 		}
 	}
 
@@ -515,7 +514,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const modePrompt = customModePrompts?.[mode] as PromptComponent
 		const effectiveInstructions = [globalInstructions, modePrompt?.customInstructions].filter(Boolean).join("\n\n")
 
-		const pearaiAgentModels = await this.getPearAIAgentModels()
+		const pearaiAgentModels = await this.getLocalAgentModels()
 
 		const cline = new Cline({
 			provider: this,
@@ -568,7 +567,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const modePrompt = customModePrompts?.[mode] as PromptComponent
 		const effectiveInstructions = [globalInstructions, modePrompt?.customInstructions].filter(Boolean).join("\n\n")
 
-		const pearaiAgentModels = await this.getPearAIAgentModels()
+		const pearaiAgentModels = await this.getLocalAgentModels()
 		const cline = new Cline({
 			provider: this,
 			apiConfiguration: { ...apiConfiguration, pearaiAgentModels: pearaiAgentModels },
@@ -653,6 +652,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		])
 
 		const imagesUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "images"])
+		const localApiOrigin = this.getConfiguredLocalApiOrigin()
 
 		const file = "src/index.tsx"
 		const scriptUri = `http://${localServerUrl}/${file}`
@@ -672,8 +672,8 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			`font-src ${webview.cspSource}`,
 			`style-src ${webview.cspSource} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
 			`img-src ${webview.cspSource} data:`,
-			`script-src 'unsafe-eval' https://* https://*.posthog.com http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
-			`connect-src https://* https://*.posthog.com ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort} http://localhost:8000 http://0.0.0.0:8000 https://server.trypear.ai`,
+			`script-src 'unsafe-eval' https://* http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
+			`connect-src https://* ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort} ${localApiOrigin}`,
 		]
 
 		return /*html*/ `
@@ -755,6 +755,8 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		// // Same for stylesheet
 		// const stylesheetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, "assets", "main.css"))
 
+		const localApiOrigin = this.getConfiguredLocalApiOrigin()
+
 		// Use a nonce to only allow a specific script to be run.
 		/*
 		content security policy of your webview to only allow scripts that have a specific nonce
@@ -769,6 +771,11 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const nonce = getNonce()
 
 		// Tip: Install the es6-string-html VS Code extension to enable code highlighting below
+ 		const telemetryScriptHosts = ENABLE_TELEMETRY ? "https://us-assets.i.posthog.com" : ""
+		const telemetryConnectHosts = ENABLE_TELEMETRY
+			? "https://us.i.posthog.com https://us-assets.i.posthog.com"
+			: ""
+
 		return /*html*/ `
         <!DOCTYPE html>
         <html lang="en">
@@ -776,7 +783,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data:; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' https://us-assets.i.posthog.com 'strict-dynamic'; connect-src https://openrouter.ai https://api.requesty.ai https://us.i.posthog.com https://us-assets.i.posthog.com ${webview.cspSource} https://server.trypear.ai;">
+			<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data:; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' ${telemetryScriptHosts} 'strict-dynamic'; connect-src https://openrouter.ai https://api.requesty.ai ${telemetryConnectHosts} ${webview.cspSource} ${localApiOrigin};">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
 			<link href="${codiconsUri}" rel="stylesheet" />
 			<script nonce="${nonce}">
@@ -792,6 +799,17 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
           </body>
         </html>
       `
+	}
+
+	private getConfiguredLocalApiOrigin(): string {
+		const providerSettings = this.contextProxy.getProviderSettings()
+		const configuredBaseUrl = providerSettings.pearaiBaseUrl || PEARAI_URL
+
+		if (URL.canParse(configuredBaseUrl)) {
+			return new URL(configuredBaseUrl).origin
+		}
+
+		return LOCAL_API_ORIGIN
 	}
 
 	/**
@@ -840,7 +858,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 					apiConfig = {
 						...apiConfig,
 						apiProvider: "pearai",
-						apiModelId: "pearai-model-creator",
+						apiModelId: pearaiDefaultModelId,
 					}
 				}
 
@@ -1271,7 +1289,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			...baseApiConfiguration,
 		}
 
-		const telemetryKey = "phc_EixCfQZYA5It6ZjtZG2C8THsUQzPzXZsdCsvR8AYhfh"
+		const telemetryKey = ENABLE_TELEMETRY ? "phc_EixCfQZYA5It6ZjtZG2C8THsUQzPzXZsdCsvR8AYhfh" : undefined
 		const machineId = vscode.env.machineId
 		const allowedCommands = vscode.workspace.getConfiguration("roo-cline").get<string[]>("allowedCommands") || []
 		const cwd = this.cwd
@@ -1307,7 +1325,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			diffEnabled: diffEnabled ?? true,
 			enableCheckpoints: enableCheckpoints ?? true,
 			shouldShowAnnouncement:
-				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
+				telemetrySetting === "enabled" && lastShownAnnouncementId !== this.latestAnnouncementId,
 			allowedCommands,
 			soundVolume: soundVolume ?? 0.5,
 			browserViewportSize: browserViewportSize ?? "900x600",
@@ -1443,7 +1461,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			maxWorkspaceFiles: stateValues.maxWorkspaceFiles ?? 200,
 			openRouterUseMiddleOutTransform: stateValues.openRouterUseMiddleOutTransform ?? true,
 			browserToolEnabled: stateValues.browserToolEnabled ?? true,
-			telemetrySetting: stateValues.telemetrySetting || "unset",
+			telemetrySetting: stateValues.telemetrySetting || "disabled",
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
 			historyPreviewCollapsed: stateValues.historyPreviewCollapsed ?? false,

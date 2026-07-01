@@ -2,7 +2,7 @@ import { PostHog } from "posthog-node"
 import * as vscode from "vscode"
 
 import { logger } from "../../utils/logging"
-import { getpearAIExports } from "../../activate/registerPearListener"
+import { ENABLE_TELEMETRY } from "../../shared/backendConfig"
 
 // This forward declaration is needed to avoid circular dependencies
 export interface ClineProviderInterface {
@@ -41,41 +41,14 @@ export class PostHogClient {
 	private static instance: PostHogClient
 	private readonly client: PostHog
 	private readonly vscMachineId: string
-	private pearaiId: string
 	private telemetryEnabled: boolean
 	private providerRef: WeakRef<ClineProviderInterface> | null
 
 	private constructor() {
 		this.vscMachineId = vscode.env.machineId
-		this.pearaiId = this.vscMachineId // Initialize with machine ID as fallback
-		this.telemetryEnabled = true
+		this.telemetryEnabled = ENABLE_TELEMETRY
 		this.providerRef = null
 		this.client = new PostHog('phc_EixCfQZYA5It6ZjtZG2C8THsUQzPzXZsdCsvR8AYhfh', { host: "https://us.i.posthog.com" })
-
-		// getting the pearai id from the submodule
-		void this.initializePearAIId()
-	}
-
-	private async initializePearAIId(): Promise<void> {
-		try {
-			const exports = await getpearAIExports()
-			const pearaiId = await exports.pearAPI.getUserId()
-			if (pearaiId) {
-				this.pearaiId = pearaiId
-				this.client.identify({
-					distinctId: this.vscMachineId,
-					properties: {
-						pearAiId: this.pearaiId, 
-					}
-				});
-				this.client.alias({
-					distinctId: this.vscMachineId,
-					alias: this.pearaiId,
-				})
-			}
-		} catch (error) {
-			logger.debug("Failed to get PearAI exports, using machine ID as fallback")
-		}
 	}
 
 	/**
@@ -84,17 +57,13 @@ export class PostHogClient {
 	 * @param didUserOptIn Whether the user has explicitly opted into telemetry
 	 */
 	public updateTelemetryState(didUserOptIn: boolean): void {
-		this.telemetryEnabled = true
+		this.telemetryEnabled = ENABLE_TELEMETRY && didUserOptIn
 
 		// First check global telemetry level - telemetry should only be enabled when level is "all"
 		// const telemetryLevel = vscode.workspace.getConfiguration("telemetry").get<string>("telemetryLevel", "all")
 		// const globalTelemetryEnabled = telemetryLevel === "all"
 
 		// We only enable telemetry if global vscode telemetry is enabled
-		// if (globalTelemetryEnabled) {
-			// this.telemetryEnabled = didUserOptIn
-		// }
-
 		// Update PostHog client state based on telemetry preference
 		if (this.telemetryEnabled) {
 			this.client.optIn()

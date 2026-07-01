@@ -374,9 +374,9 @@ describe("ClineProvider", () => {
 
 		// Verify Content Security Policy contains the necessary connection domains.
 		expect(mockWebviewView.webview.html).toContain(
-			"connect-src https://openrouter.ai https://api.requesty.ai https://us.i.posthog.com https://us-assets.i.posthog.com",
+			"connect-src https://openrouter.ai https://api.requesty.ai",
 		)
-		expect(mockWebviewView.webview.html).toContain("https://server.trypear.ai;")
+		expect(mockWebviewView.webview.html).toContain("http://localhost:8080;")
 
 		// Extract the script-src directive section and verify required security elements
 		const html = mockWebviewView.webview.html

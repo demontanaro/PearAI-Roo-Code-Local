@@ -31,9 +31,9 @@ import {
 	registerCommands,
 	registerCodeActions,
 	registerTerminalActions,
-	registerPearListener,
 } from "./activate"
 import { formatLanguage } from "./shared/language"
+import { ENABLE_PEAR_EXTENSION_INTEGRATION } from "./shared/backendConfig"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -78,7 +78,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy)
 	telemetryService.setProvider(provider)
 
-	registerPearListener(provider);
+	if (ENABLE_PEAR_EXTENSION_INTEGRATION) {
+		const { registerPearListener } = await import("./activate/registerPearListener")
+		registerPearListener(provider).catch((error: unknown) => {
+			outputChannel.appendLine(
+				`Pear extension integration disabled due to initialization error: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		})
+	}
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {
@@ -106,79 +113,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	 */
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand("pearai-roo-cline.pearaiLogin", async (data) => {
-			console.dir("Logged in to PearAI:")
-			console.dir(data)
-			context.secrets.store("pearaiApiKey", data.accessToken)
-			context.secrets.store("pearaiRefreshKey", data.refreshToken)
-			const provider = await ClineProvider.getInstance()
-			if (provider) {
-				// Update the API configuration to clear the PearAI key
-				await provider.setValues({
-					pearaiApiKey: data.accessToken,
-				})
-				await provider.postStateToWebview()
-				// Update MCP server with new token
-				const mcpHub = provider.getMcpHub()
-				if (mcpHub) {
-					await mcpHub.updatePearAIApiKey(data.accessToken)
-				}
-			}
-			vscode.commands.executeCommand("roo-cline.plusButtonClicked")
-		}),
-	)
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand("pearai-roo-cline.updatePearAITokens", async (data) => {
-			console.dir("Updated PearAI tokens:")
-			console.dir(data)
-			context.secrets.store("pearaiApiKey", data.accessToken)
-			context.secrets.store("pearaiRefreshKey", data.refreshToken)
-			const provider = await ClineProvider.getInstance()
-			if (provider) {
-				// Update the API configuration to clear the PearAI key
-				await provider.setValues({
-					pearaiApiKey: data.accessToken,
-				})
-				await provider.postStateToWebview()
-				// Update MCP server with new token
-				const mcpHub = provider.getMcpHub()
-				if (mcpHub) {
-					await mcpHub.updatePearAIApiKey(data.accessToken)
-				}
-			}
-		}),
-	)
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand("pearai-roo-cline.pearaiLogout", async () => {
-			console.dir("Logged out of PearAI:")
-			context.secrets.delete("pearaiApiKey")
-			context.secrets.delete("pearaiRefreshKey")
-
-			// Get the current provider instance and update webview state
-			const provider = await ClineProvider.getInstance()
-			if (provider) {
-				// Update the API configuration to clear the PearAI key
-				await provider.setValues({
-					pearaiApiKey: undefined,
-				})
-				await provider.postStateToWebview()
-				// Clear MCP server token
-				const mcpHub = provider.getMcpHub()
-				if (mcpHub) {
-					await mcpHub.clearPearAIApiKey()
-				}
-			}
-		}),
-	)
-
-	context.subscriptions.push(
 		vscode.commands.registerCommand("pearai-roo-cline.PearAIKeysNotFound", async () => {
-			const provider = await ClineProvider.getInstance()
-			if (provider) {
-				provider.postMessageToWebview({ type: "action", action: "PearAIKeysNotFound" })
-			}
+			// Local mode does not require account keys.
+			return
 		}),
 	)
 

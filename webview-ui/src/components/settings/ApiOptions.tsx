@@ -48,7 +48,7 @@ import { ApiErrorMessage } from "./ApiErrorMessage"
 import { ThinkingBudget } from "./ThinkingBudget"
 import { R1FormatSetting } from "./R1FormatSetting"
 import { usePearAIModels } from "../../hooks/usePearAIModels"
-import { allModels, pearaiDefaultModelId, pearaiDefaultModelInfo } from "../../../../src/shared/pearaiApi"
+import { allModels, PEARAI_URL, pearaiDefaultModelId, pearaiDefaultModelInfo } from "../../../../src/shared/pearaiApi"
 import { OpenRouterBalanceDisplay } from "./OpenRouterBalanceDisplay"
 import { RequestyBalanceDisplay } from "./RequestyBalanceDisplay"
 import { ReasoningEffort } from "./ReasoningEffort"
@@ -407,35 +407,17 @@ const ApiOptions = ({
 
 			{selectedProvider === "pearai" && (
 				<div>
-					{!apiConfiguration?.pearaiApiKey ? (
-						<>
-							<VSCodeButton
-								onClick={() => {
-									vscode.postMessage({
-										type: "openPearAIAuth",
-									})
-								}}>
-								Login to PearAI
-							</VSCodeButton>
-							<p
-								style={{
-									fontSize: "12px",
-									marginTop: "5px",
-									color: "var(--vscode-descriptionForeground)",
-								}}>
-								Connect your PearAI account to use servers.
-							</p>
-						</>
-					) : (
-						<p
-							style={{
-								fontSize: "12px",
-								marginTop: "5px",
-								color: "var(--vscode-descriptionForeground)",
-							}}>
-							User already logged in to PearAI. Click 'Done' to proceed!
-						</p>
-					)}
+					<VSCodeTextField
+						value={apiConfiguration?.pearaiBaseUrl || PEARAI_URL}
+						type="url"
+						onInput={handleInputChange("pearaiBaseUrl")}
+						placeholder={PEARAI_URL}
+						className="w-full">
+						<label className="block font-medium mb-1">Local OpenAI-compatible Base URL</label>
+					</VSCodeTextField>
+					<div className="text-sm text-vscode-descriptionForeground -mt-2">
+						Uses GET /models and POST /chat/completions on your configured OpenAI-compatible backend.
+					</div>
 				</div>
 			)}
 			{errorMessage && <ApiErrorMessage errorMessage={errorMessage} />}

@@ -2,6 +2,7 @@ import { ZodError } from "zod"
 
 import { logger } from "../../utils/logging"
 import { PostHogClient, ClineProviderInterface } from "./PostHogClient"
+import { ENABLE_TELEMETRY } from "../../shared/backendConfig"
 
 /**
  * TelemetryService wrapper class that defers PostHogClient initialization
@@ -17,6 +18,12 @@ class TelemetryService {
 	 */
 	public initialize(): void {
 		if (this.initialized) {
+			return
+		}
+
+		if (!ENABLE_TELEMETRY) {
+			this.initialized = false
+			this.client = null
 			return
 		}
 

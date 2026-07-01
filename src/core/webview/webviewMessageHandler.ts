@@ -1263,16 +1263,7 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			break
 		}
 		case "openPearAIAuth":
-			const extensionUrl = `${vscode.env.uriScheme}://pearai.pearai/auth`
-			const callbackUri = await vscode.env.asExternalUri(vscode.Uri.parse(extensionUrl))
-
-			await vscode.env.openExternal(
-				await vscode.env.asExternalUri(
-					vscode.Uri.parse(
-						`https://trypear.ai/signin?callback=${callbackUri.toString()}`, // Change to localhost if running locally
-					),
-				),
-			)
+			vscode.window.showInformationMessage("Local mode is enabled. No remote account login is required.")
 			break
 		case "openPearAICreatorFeedbackOverlay":
 			const pearAIExports = await getpearAIExports();

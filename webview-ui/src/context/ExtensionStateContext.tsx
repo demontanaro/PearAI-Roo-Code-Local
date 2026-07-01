@@ -11,7 +11,7 @@ import { Mode, CustomModePrompts, defaultModeSlug, defaultPrompts, ModeConfig } 
 import { CustomSupportPrompts } from "@roo/shared/support-prompt"
 import { experimentDefault, ExperimentId } from "@roo/shared/experiments"
 import { TelemetrySetting } from "@roo/shared/TelemetrySetting"
-import { PEARAI_URL, pearaiModels } from "../../../src/shared/pearaiApi"
+import { PEARAI_URL, pearaiDefaultModelId, pearaiModels } from "../../../src/shared/pearaiApi"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	historyPreviewCollapsed?: boolean // Add the new state property
@@ -180,7 +180,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		maxWorkspaceFiles: 200,
 		cwd: "",
 		browserToolEnabled: true,
-		telemetrySetting: "unset",
+		telemetrySetting: "disabled",
 		showRooIgnoredFiles: true, // Default to showing .pearai-agent-ignore'd files with lock symbol (current behavior).
 		renderContext: "sidebar",
 		maxReadFileLine: 500, // Default max read file line limit
@@ -224,8 +224,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 							apiConfiguration: {
 								apiProvider: "pearai",
 								pearaiBaseUrl: PEARAI_URL,
-								pearaiModelId: "pearai-model",
-								pearaiModelInfo: pearaiModels["pearai-model"],
+								pearaiModelId: pearaiDefaultModelId,
+								pearaiModelInfo: pearaiModels[pearaiDefaultModelId],
 							},
 						})
 					}

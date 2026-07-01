@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react"
 import { ModelInfo } from "../../../src/shared/api"
-import { pearaiDefaultModelId, pearaiDefaultModelInfo, PEARAI_URL } from "../../../src/shared/pearaiApi"
+import {
+	buildPearAIAgentModelsConfig,
+	fetchOpenAICompatibleModelIds,
+	pearaiDefaultModelId,
+	pearaiDefaultModelInfo,
+	PEARAI_URL,
+} from "../../../src/shared/pearaiApi"
 import type { ApiConfiguration } from "../../../src/shared/api"
 
 export const usePearAIModels = (apiConfiguration?: ApiConfiguration) => {
@@ -11,23 +17,21 @@ export const usePearAIModels = (apiConfiguration?: ApiConfiguration) => {
 	useEffect(() => {
 		const fetchPearAIModels = async () => {
 			try {
-				const res = await fetch(`${PEARAI_URL}/getPearAIAgentModels`)
-				if (!res.ok) throw new Error("Failed to fetch models")
-				const config = await res.json()
+				const modelIds = await fetchOpenAICompatibleModelIds(apiConfiguration?.pearaiBaseUrl || PEARAI_URL)
+				const config = buildPearAIAgentModelsConfig(modelIds)
 
 				if (config.models && Object.keys(config.models).length > 0) {
-					console.log("Models successfully loaded from server")
 					setPearAIModels(config.models)
 				}
 			} catch (error) {
-				console.error("Error fetching PearAI models:", error)
+				console.error("Error fetching local OpenAI-compatible models:", error)
 			}
 		}
 
 		if (apiConfiguration?.apiProvider === "pearai") {
 			fetchPearAIModels()
 		}
-	}, [apiConfiguration?.apiProvider])
+	}, [apiConfiguration?.apiProvider, apiConfiguration?.pearaiBaseUrl])
 
 	return {
 		models: pearaiModels,
