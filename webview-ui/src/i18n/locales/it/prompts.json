@@ -1,13 +1,16 @@
 {
-	"title": "Prompt",
+	"title": "Modi",
 	"done": "Fatto",
 	"modes": {
 		"title": "Modalità",
 		"createNewMode": "Crea nuova modalità",
+		"importMode": "Importa modalità",
+		"noMatchFound": "Nessuna modalità trovata",
 		"editModesConfig": "Modifica configurazione modalità",
 		"editGlobalModes": "Modifica modalità globali",
-		"editProjectModes": "Modifica modalità di progetto (.pearai-agent-ignore)",
-		"createModeHelpText": "Clicca sul + per creare una nuova modalità personalizzata, o chiedi semplicemente a Agent nella chat di crearne una per te!"
+		"editProjectModes": "Modifica modalità di progetto (.roomodes)",
+		"createModeHelpText": "Le modalità sono personas specializzate che personalizzano il comportamento di Roo. <0>Scopri di più sull'uso delle modalità</0> o <1>sulla personalizzazione delle modalità.</1>",
+		"selectMode": "Cerca modalità"
 	},
 	"apiConfiguration": {
 		"title": "Configurazione API",
@@ -22,7 +25,6 @@
 		"toolNames": {
 			"read": "Leggi file",
 			"edit": "Modifica file",
-			"browser": "Usa browser",
 			"command": "Esegui comandi",
 			"mcp": "Usa MCP"
 		},
@@ -31,18 +33,47 @@
 	"roleDefinition": {
 		"title": "Definizione del ruolo",
 		"resetToDefault": "Ripristina predefiniti",
-		"description": "Definisci l'esperienza e la personalità di Agent per questa modalità. Questa descrizione modella come Agent si presenta e affronta i compiti."
+		"description": "Definisci l'esperienza e la personalità di Roo per questa modalità. Questa descrizione modella come Roo si presenta e affronta i compiti."
+	},
+	"description": {
+		"title": "Descrizione breve (per umani)",
+		"resetToDefault": "Ripristina alla descrizione predefinita",
+		"description": "Una breve descrizione mostrata nel menu a discesa del selettore di modalità."
+	},
+	"whenToUse": {
+		"title": "Quando utilizzare (opzionale)",
+		"description": "Descrivi quando questa modalità dovrebbe essere utilizzata. Questo aiuta l'Orchestrator a scegliere la modalità giusta per un compito.",
+		"resetToDefault": "Ripristina la descrizione 'Quando utilizzare' ai valori predefiniti"
 	},
 	"customInstructions": {
 		"title": "Istruzioni personalizzate specifiche per la modalità (opzionale)",
 		"resetToDefault": "Ripristina predefiniti",
 		"description": "Aggiungi linee guida comportamentali specifiche per la modalità {{modeName}}.",
-		"loadFromFile": "Le istruzioni personalizzate specifiche per la modalità {{mode}} possono essere caricate anche dalla cartella <span>.pearai-agent/rules-{{slug}}/</span> nel tuo spazio di lavoro (.roorules-{{slug}} e .clinerules-{{slug}} sono obsoleti e smetteranno di funzionare presto)."
+		"loadFromFile": "Le istruzioni personalizzate specifiche per la modalità {{mode}} possono anche essere caricate dalla cartella <span>.roo/rules-{{slug}}/</span> nel tuo spazio di lavoro o dal globale <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} e .clinerules-{{slug}} sono deprecati e smetteranno di funzionare presto)."
+	},
+	"exportMode": {
+		"title": "Esporta modalità",
+		"description": "Esporta questa modalità in un file YAML con tutte le regole incluse per una facile condivisione con altri.",
+		"export": "Esporta modalità",
+		"exporting": "Esportazione..."
+	},
+	"importMode": {
+		"selectLevel": "Scegli dove importare questa modalità:",
+		"import": "Importa",
+		"importing": "Importazione...",
+		"global": {
+			"label": "Livello globale",
+			"description": "Disponibile in tutti i progetti. Le regole verranno unite nelle istruzioni personalizzate."
+		},
+		"project": {
+			"label": "Livello di progetto",
+			"description": "Disponibile solo in questo spazio di lavoro. Se la modalità esportata conteneva file di regole, verranno ricreati nella cartella .roo/rules-{slug}/."
+		}
 	},
 	"globalCustomInstructions": {
 		"title": "Istruzioni personalizzate per tutte le modalità",
-		"description": "Queste istruzioni si applicano a tutte le modalità. Forniscono un insieme base di comportamenti che possono essere migliorati dalle istruzioni specifiche per modalità qui sotto.\nSe desideri che Agent pensi e parli in una lingua diversa dalla lingua di visualizzazione del tuo editor ({{language}}), puoi specificarlo qui.",
-		"loadFromFile": "Le istruzioni possono essere caricate anche dalla cartella <span>.pearai-agent/rules/</span> nel tuo spazio di lavoro (.roorules e .clinerules sono obsoleti e smetteranno di funzionare presto)."
+		"description": "Queste istruzioni si applicano a tutte le modalità. Forniscono un insieme base di comportamenti che possono essere migliorati dalle istruzioni specifiche per modalità qui sotto. <0>Scopri di più</0>",
+		"loadFromFile": "Le istruzioni possono anche essere caricate dalla cartella <span>.roo/rules/</span> nel tuo spazio di lavoro o dal globale <0>.roo/rules/</0> (.roorules e .clinerules sono deprecati e smetteranno di funzionare presto)."
 	},
 	"systemPrompt": {
 		"preview": "Anteprima prompt di sistema",
@@ -58,12 +89,24 @@
 			"apiConfigDescription": "Puoi selezionare una configurazione API da usare sempre per migliorare i prompt, o semplicemente usare quella attualmente selezionata",
 			"useCurrentConfig": "Usa la configurazione API attualmente selezionata",
 			"testPromptPlaceholder": "Inserisci un prompt per testare il miglioramento",
-			"previewButton": "Anteprima miglioramento prompt"
+			"previewButton": "Anteprima miglioramento prompt",
+			"testEnhancement": "Testa miglioramento",
+			"includeTaskHistory": "Includi cronologia attività come contesto",
+			"includeTaskHistoryDescription": "Quando abilitato, gli ultimi 10 messaggi della conversazione corrente verranno inclusi come contesto durante il miglioramento dei prompt, aiutando a generare suggerimenti più rilevanti e consapevoli del contesto."
+		},
+		"condense": {
+			"apiConfiguration": "Configurazione API per la condensazione del contesto",
+			"apiConfigDescription": "Seleziona quale configurazione API utilizzare per le operazioni di condensazione del contesto. Lascia deselezionato per utilizzare la configurazione attiva corrente.",
+			"useCurrentConfig": "Usa la configurazione API currently selezionata"
 		},
 		"types": {
 			"ENHANCE": {
 				"label": "Migliora prompt",
-				"description": "Utilizza il miglioramento dei prompt per ottenere suggerimenti o miglioramenti personalizzati per i tuoi input. Questo assicura che Agent comprenda la tua intenzione e fornisca le migliori risposte possibili. Disponibile tramite l'icona ✨ nella chat."
+				"description": "Utilizza il miglioramento dei prompt per ottenere suggerimenti o miglioramenti personalizzati per i tuoi input. Questo assicura che Roo comprenda la tua intenzione e fornisca le migliori risposte possibili. Disponibile tramite l'icona ✨ nella chat."
+			},
+			"CONDENSE": {
+				"label": "Condensazione del contesto",
+				"description": "Configura come viene condensato il contesto della conversazione per gestire i limiti dei token. Questo prompt viene utilizzato sia per le operazioni di condensazione del contesto manuali che automatiche."
 			},
 			"EXPLAIN": {
 				"label": "Spiega codice",
@@ -99,10 +142,6 @@
 			}
 		}
 	},
-	"advancedSystemPrompt": {
-		"title": "Avanzato: Sovrascrivi prompt di sistema",
-		"description": "Puoi sostituire completamente il prompt di sistema per questa modalità (a parte la definizione del ruolo e le istruzioni personalizzate) creando un file in <span>.pearai-agent/system-prompt-{{slug}}</span> nel tuo spazio di lavoro. Questa è una funzionalità molto avanzata che bypassa le protezioni integrate e i controlli di coerenza (specialmente riguardo all'uso degli strumenti), quindi fai attenzione!"
-	},
 	"createModeDialog": {
 		"title": "Crea nuova modalità",
 		"close": "Chiudi",
@@ -122,13 +161,21 @@
 				"description": "Disponibile in tutti gli spazi di lavoro"
 			},
 			"project": {
-				"label": "Specifico del progetto (.pearai-agent-ignore)",
+				"label": "Specifico del progetto (.roomodes)",
 				"description": "Disponibile solo in questo spazio di lavoro, ha la precedenza sul globale"
 			}
 		},
 		"roleDefinition": {
 			"label": "Definizione del ruolo",
-			"description": "Definisci l'esperienza e la personalità di Agent per questa modalità."
+			"description": "Definisci l'esperienza e la personalità di Roo per questa modalità."
+		},
+		"description": {
+			"label": "Descrizione breve (per umani)",
+			"description": "Una breve descrizione mostrata nel menu a discesa del selettore di modalità."
+		},
+		"whenToUse": {
+			"label": "Quando utilizzare (opzionale)",
+			"description": "Fornisci una chiara descrizione di quando questa modalità è più efficace e per quali tipi di compiti eccelle."
 		},
 		"tools": {
 			"label": "Strumenti disponibili",
@@ -144,5 +191,13 @@
 		},
 		"deleteMode": "Elimina modalità"
 	},
-	"allFiles": "tutti i file"
+	"allFiles": "tutti i file",
+	"deleteMode": {
+		"title": "Elimina modalità",
+		"message": "Sei sicuro di voler eliminare la modalità \"{{modeName}}\"?",
+		"rulesFolder": "Questa modalità ha una cartella di regole in {{folderPath}} che verrà eliminata.",
+		"descriptionNoRules": "Sei sicuro di voler eliminare questa modalità personalizzata?",
+		"confirm": "Elimina",
+		"cancel": "Annulla"
+	}
 }

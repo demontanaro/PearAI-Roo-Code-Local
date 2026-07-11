@@ -1,19 +1,18 @@
+import type { GlobalSettings } from "@roo-code/types"
+
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui"
-
-import { GlobalSettings } from "@roo/schemas"
+import { Button, StandardTooltip } from "@/components/ui"
 
 type AutoApproveToggles = Pick<
 	GlobalSettings,
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowWrite"
-	| "alwaysAllowBrowser"
-	| "alwaysApproveResubmit"
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
 	| "alwaysAllowExecute"
+	| "alwaysAllowFollowupQuestions"
 >
 
 export type AutoApproveSetting = keyof AutoApproveToggles
@@ -40,20 +39,6 @@ export const autoApproveSettingsConfig: Record<AutoApproveSetting, AutoApproveCo
 		descriptionKey: "settings:autoApprove.write.description",
 		icon: "edit",
 		testId: "always-allow-write-toggle",
-	},
-	alwaysAllowBrowser: {
-		key: "alwaysAllowBrowser",
-		labelKey: "settings:autoApprove.browser.label",
-		descriptionKey: "settings:autoApprove.browser.description",
-		icon: "globe",
-		testId: "always-allow-browser-toggle",
-	},
-	alwaysApproveResubmit: {
-		key: "alwaysApproveResubmit",
-		labelKey: "settings:autoApprove.retry.label",
-		descriptionKey: "settings:autoApprove.retry.description",
-		icon: "refresh",
-		testId: "always-approve-resubmit-toggle",
 	},
 	alwaysAllowMcp: {
 		key: "alwaysAllowMcp",
@@ -83,6 +68,13 @@ export const autoApproveSettingsConfig: Record<AutoApproveSetting, AutoApproveCo
 		icon: "terminal",
 		testId: "always-allow-execute-toggle",
 	},
+	alwaysAllowFollowupQuestions: {
+		key: "alwaysAllowFollowupQuestions",
+		labelKey: "settings:autoApprove.followupQuestions.label",
+		descriptionKey: "settings:autoApprove.followupQuestions.description",
+		icon: "question",
+		testId: "always-allow-followup-questions-toggle",
+	},
 }
 
 type AutoApproveToggleProps = AutoApproveToggles & {
@@ -93,25 +85,20 @@ export const AutoApproveToggle = ({ onToggle, ...props }: AutoApproveToggleProps
 	const { t } = useAppTranslation()
 
 	return (
-		<div
-			className={cn(
-				"flex flex-row flex-wrap justify-center gap-2 max-w-[400px] mx-auto my-2 ",
-				"[@media(min-width:600px)]:gap-4",
-				"[@media(min-width:800px)]:max-w-[800px]",
-			)}>
+		<div className={cn("flex flex-row flex-wrap gap-2 py-2")}>
 			{Object.values(autoApproveSettingsConfig).map(({ key, descriptionKey, labelKey, icon, testId }) => (
-				<Button
-					key={key}
-					variant={props[key] ? "default" : "outline"}
-					onClick={() => onToggle(key, !props[key])}
-					title={t(descriptionKey || "")}
-					data-testid={testId}
-					className={cn(" aspect-square h-[80px]", !props[key] && "opacity-50")}>
-					<span className={cn("flex flex-col items-center gap-1")}>
-						<span className={`codicon codicon-${icon}`} />
-						<span className="text-sm text-center">{t(labelKey)}</span>
-					</span>
-				</Button>
+				<StandardTooltip key={key} content={t(descriptionKey || "")}>
+					<Button
+						variant={props[key] ? "primary" : "secondary"}
+						onClick={() => onToggle(key, !props[key])}
+						aria-label={t(labelKey)}
+						aria-pressed={!!props[key]}
+						data-testid={testId}
+						className={cn("gap-1.5 text-xs whitespace-nowrap", !props[key] && "opacity-50")}>
+						<span className={`codicon codicon-${icon} text-sm`} />
+						<span>{t(labelKey)}</span>
+					</Button>
+				</StandardTooltip>
 			))}
 		</div>
 	)

@@ -1,10 +1,7 @@
-export function getCallbackUrl(provider: string, uriScheme?: string) {
-	const callbackUrl = `${uriScheme || "vscode"}://rooveterinaryinc.roo-cline/${provider}`
-	return encodeURIComponent(callbackUrl)
-}
+import { Package } from "@roo/package"
 
-export function getGlamaAuthUrl(uriScheme?: string) {
-	return `https://glama.ai/oauth/authorize?callback_url=${getCallbackUrl("glama", uriScheme)}`
+export function getCallbackUrl(provider: string, uriScheme?: string) {
+	return encodeURIComponent(`${uriScheme || "vscode"}://${Package.publisher}.${Package.name}/${provider}`)
 }
 
 export function getOpenRouterAuthUrl(uriScheme?: string) {

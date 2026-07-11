@@ -1,28 +1,29 @@
 {
-	"greeting": "嗨，我是 Roo！",
-	"introduction": "<strong>PearAI Agent (Powered by Roo Code / Cline) 是頂尖的自主編程助手。</strong>準備好以前所未有的方式進行架構設計、編碼、除錯並提升您的工作效率。要繼續使用，PearAI Agent (Powered by Roo Code / Cline) 需要一個 API 金鑰。",
-	"notice": "開始使用前，此擴充功能需要一個 API 提供者。",
-	"start": "讓我們開始吧！",
-	"chooseProvider": "選擇一個 API 提供者開始：",
 	"routers": {
 		"requesty": {
-			"description": "您的最佳化 LLM 路由器",
+			"description": "為您最佳化的 LLM 路由器",
 			"incentive": "$1 免費額度"
 		},
 		"openrouter": {
-			"description": "LLM 的統一介面"
+			"description": "LLM 統一介面"
 		}
 	},
-	"startRouter": "透過路由器快速設定",
-	"startCustom": "使用您自己的 API 金鑰",
-	"telemetry": {
-		"title": "協助改進 PearAI Agent (Powered by Roo Code / Cline)",
-		"anonymousTelemetry": "傳送匿名的錯誤和使用資料，以協助我們修復錯誤並改進擴充功能。我們絕不會傳送任何程式碼、提示或個人資訊。",
-		"changeSettings": "您隨時可以在<settingsLink>設定</settingsLink>底端更改此選項",
-		"settings": "設定",
-		"allow": "允許",
-		"deny": "拒絕"
+	"landing": {
+		"greeting": "歡迎使用 Roo Code！",
+		"introduction": "Roo Code 提供一系列內建和可擴充的模式，讓您以前所未有的方式規劃專案、設計架構、編寫程式碼、除錯並提升工作效率。",
+		"getStarted": "Get Started"
 	},
-	"or": "或是",
+	"providerSignup": {
+		"heading": "選擇供應商",
+		"chooseProvider": "Roo 需要 LLM 供應商才能運作。選擇一個以開始使用，您可以稍後新增更多。",
+		"learnMore": "了解更多",
+		"useAnotherProvider": "第三方供應商",
+		"useAnotherProviderDescription": "輸入 API 金鑰並開始使用。",
+		"noApiKeys": "不想處理 API 金鑰和個別帳戶嗎？",
+		"goBack": "返回",
+		"finish": "完成"
+	},
+	"startRouter": "我們建議使用 LLM 路由器：",
+	"startCustom": "或自行提供供應商 API 金鑰：",
 	"importSettings": "匯入設定"
 }

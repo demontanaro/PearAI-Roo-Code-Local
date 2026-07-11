@@ -1,26 +1,14 @@
 import { LOCAL_API_BASE } from "./backendConfig"
-
-import {
-	anthropicModels,
-	bedrockModels,
-	deepSeekModels,
-	geminiModels,
-	glamaDefaultModelId,
-	glamaDefaultModelInfo,
-	mistralModels,
-	ModelInfo,
-	openAiModelInfoSaneDefaults,
-	openAiNativeModels,
-	openRouterDefaultModelId,
-	openRouterDefaultModelInfo,
-	requestyDefaultModelId,
-	requestyDefaultModelInfo,
-	unboundDefaultModelId,
-	unboundDefaultModelInfo,
-	vertexModels,
-} from "./api"
+import type { ModelInfo } from "@roo-code/types"
 
 export const PEARAI_URL = LOCAL_API_BASE
+
+const openAiModelInfoSaneDefaults: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 128_000,
+	supportsImages: true,
+	supportsPromptCache: false,
+}
 
 export interface PearAIAgentModelsConfig {
 	models: Record<string, ModelInfo>
@@ -105,78 +93,5 @@ export async function fetchOpenAICompatibleModelIds(baseUrl: string = PEARAI_URL
 }
 
 export const allModels: { [key: string]: ModelInfo } = {
-	// Anthropic models
-	...Object.entries(anthropicModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`anthropic/${key}`]: value,
-		}),
-		{},
-	),
-
-	// Bedrock models
-	...Object.entries(bedrockModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`bedrock/${key}`]: value,
-		}),
-		{},
-	),
-
-	// Glama models (single default model)
-	[`glama/${glamaDefaultModelId}`]: glamaDefaultModelInfo,
-
-	// Requesty models (single default model)
-	[`requesty/${requestyDefaultModelId}`]: requestyDefaultModelInfo,
-
-	// OpenRouter models (single default model)
-	[`openrouter/${openRouterDefaultModelId}`]: openRouterDefaultModelInfo,
-
-	// Vertex models
-	...Object.entries(vertexModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`vertex_ai/${key}`]: value,
-		}),
-		{},
-	),
-
-	// Gemini models
-	...Object.entries(geminiModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`gemini/${key}`]: value,
-		}),
-		{},
-	),
-
-	// OpenAI Native models
-	...Object.entries(openAiNativeModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`openai-native/${key}`]: value,
-		}),
-		{},
-	),
-
-	// DeepSeek models
-	...Object.entries(deepSeekModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`deepseek/${key}`]: value,
-		}),
-		{},
-	),
-
-	// Mistral models
-	...Object.entries(mistralModels).reduce(
-		(acc, [key, value]) => ({
-			...acc,
-			[`mistral/${key}`]: value,
-		}),
-		{},
-	),
-
-	// Unbound models (single default model)
-	[`unbound/${unboundDefaultModelId}`]: unboundDefaultModelInfo,
+	...pearaiModels,
 } as const satisfies Record<string, ModelInfo>

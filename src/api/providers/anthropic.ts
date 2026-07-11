@@ -1,27 +1,35 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
+import OpenAI from "openai"
+
 import {
+	type ModelInfo,
+	type AnthropicModelId,
 	anthropicDefaultModelId,
-	AnthropicModelId,
 	anthropicModels,
-	ApiHandlerOptions,
-	ModelInfo,
-} from "../../shared/api"
+	ANTHROPIC_DEFAULT_MAX_TOKENS,
+} from "@roo-code/types"
+
+import type { ApiHandlerOptions } from "../../shared/api"
+
 import { ApiStream } from "../transform/stream"
+import { getModelParams } from "../transform/model-params"
+import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
+import { handleProviderError } from "./utils/error-handler"
+
 import { BaseProvider } from "./base-provider"
-import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "./constants"
-import { SingleCompletionHandler, getModelParams } from "../index"
-
-const ANTHROPIC_MODELS_WITHOUT_SAMPLING_PARAMS = new Set(["claude-fable-5", "claude-opus-4-8", "claude-sonnet-4-6"])
-
-function omitsSamplingParams(modelId: string) {
-	return ANTHROPIC_MODELS_WITHOUT_SAMPLING_PARAMS.has(modelId) || modelId.startsWith("claude-opus-4-7")
-}
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+import { calculateApiCostAnthropic } from "../../shared/cost"
+import {
+	convertOpenAIToolsToAnthropic,
+	convertOpenAIToolChoiceToAnthropic,
+} from "../../core/prompts/tools/native-tools/converters"
 
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	private client: Anthropic
+	private readonly providerName = "Anthropic"
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -36,24 +44,53 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		})
 	}
 
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
-		let { id: modelId, maxTokens, thinking, temperature, virtualId } = this.getModel()
-		let requestTemperature: number | undefined = temperature
-		if (omitsSamplingParams(modelId)) {
-			requestTemperature = undefined
+		let {
+			id: modelId,
+			betas = ["fine-grained-tool-streaming-2025-05-14"],
+			maxTokens,
+			temperature,
+			reasoning: thinking,
+		} = this.getModel()
+
+		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
+		const sanitizedMessages = filterNonAnthropicBlocks(messages)
+
+		// Add 1M context beta flag if enabled for supported models (Claude Sonnet 4/4.5/4.6, Opus 4.6)
+		if (
+			(modelId === "claude-sonnet-4-20250514" ||
+				modelId === "claude-sonnet-4-5" ||
+				modelId === "claude-sonnet-4-6" ||
+				modelId === "claude-opus-4-6") &&
+			this.options.anthropicBeta1MContext
+		) {
+			betas.push("context-1m-2025-08-07")
+		}
+
+		const nativeToolParams = {
+			tools: convertOpenAIToolsToAnthropic(metadata?.tools ?? []),
+			tool_choice: convertOpenAIToolChoiceToAnthropic(metadata?.tool_choice, metadata?.parallelToolCalls),
 		}
 
 		switch (modelId) {
-			case "claude-fable-5":
-			case "claude-opus-4-8":
 			case "claude-sonnet-4-6":
-			case "claude-haiku-4-5-20251001":
+			case "claude-sonnet-4-5":
+			case "claude-sonnet-4-20250514":
+			case "claude-opus-4-6":
+			case "claude-opus-4-5-20251101":
+			case "claude-opus-4-1-20250805":
+			case "claude-opus-4-20250514":
 			case "claude-3-7-sonnet-20250219":
 			case "claude-3-5-sonnet-20241022":
 			case "claude-3-5-haiku-20241022":
 			case "claude-3-opus-20240229":
+			case "claude-haiku-4-5-20251001":
 			case "claude-3-haiku-20240307": {
 				/**
 				 * The latest message will be the new user message, one before
@@ -65,7 +102,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				 * know the last message to retrieve from the cache for the
 				 * current request.
 				 */
-				const userMsgIndices = messages.reduce(
+				const userMsgIndices = sanitizedMessages.reduce(
 					(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
 					[] as number[],
 				)
@@ -77,11 +114,11 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					{
 						model: modelId,
 						max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-						temperature: requestTemperature,
+						temperature,
 						thinking,
 						// Setting cache breakpoint for system prompt so new tasks can reuse it.
 						system: [{ text: systemPrompt, type: "text", cache_control: cacheControl }],
-						messages: messages.map((message, index) => {
+						messages: sanitizedMessages.map((message, index) => {
 							if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
 								return {
 									...message,
@@ -98,40 +135,30 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 							return message
 						}),
 						stream: true,
+						...nativeToolParams,
 					},
 					(() => {
 						// prompt caching: https://x.com/alexalbert__/status/1823751995901272068
 						// https://github.com/anthropics/anthropic-sdk-typescript?tab=readme-ov-file#default-headers
 						// https://github.com/anthropics/anthropic-sdk-typescript/commit/c920b77fc67bd839bfeb6716ceab9d7c9bbe7393
 
-						const betas = []
-
-						// Check for the thinking-128k variant first
-						if (virtualId === "claude-3-7-sonnet-20250219:thinking") {
-							betas.push("output-128k-2025-02-19")
-						}
-
 						// Then check for models that support prompt caching
 						switch (modelId) {
+							case "claude-sonnet-4-6":
+							case "claude-sonnet-4-5":
+							case "claude-sonnet-4-20250514":
+							case "claude-opus-4-6":
+							case "claude-opus-4-5-20251101":
+							case "claude-opus-4-1-20250805":
+							case "claude-opus-4-20250514":
 							case "claude-3-7-sonnet-20250219":
 							case "claude-3-5-sonnet-20241022":
 							case "claude-3-5-haiku-20241022":
 							case "claude-3-opus-20240229":
+							case "claude-haiku-4-5-20251001":
 							case "claude-3-haiku-20240307":
 								betas.push("prompt-caching-2024-07-31")
-								// Include prompt_key if newProjectType is set
-								return {
-									headers: {
-										"anthropic-beta": betas.join(","),
-										prompt_key: this.options.creatorModeConfig?.newProjectType
-											? String(this.options.creatorModeConfig.newProjectType)
-											: undefined,
-										project_path: this.options.creatorModeConfig?.newProjectPath
-											? String(this.options.creatorModeConfig.newProjectPath)
-											: undefined,
-										authorization: `Bearer ${this.options.apiKey}`,
-									},
-								}
+								return { headers: { "anthropic-beta": betas.join(",") } }
 							default:
 								return undefined
 						}
@@ -143,30 +170,47 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				stream = (await this.client.messages.create({
 					model: modelId,
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-					temperature: requestTemperature,
+					temperature,
 					system: [{ text: systemPrompt, type: "text" }],
-					messages,
+					messages: sanitizedMessages,
 					stream: true,
+					...nativeToolParams,
 				})) as any
 				break
 			}
 		}
 
+		let inputTokens = 0
+		let outputTokens = 0
+		let cacheWriteTokens = 0
+		let cacheReadTokens = 0
+
 		for await (const chunk of stream) {
 			switch (chunk.type) {
-				case "message_start":
+				case "message_start": {
 					// Tells us cache reads/writes/input/output.
-					const usage = chunk.message.usage
+					const {
+						input_tokens = 0,
+						output_tokens = 0,
+						cache_creation_input_tokens,
+						cache_read_input_tokens,
+					} = chunk.message.usage
 
 					yield {
 						type: "usage",
-						inputTokens: usage.input_tokens || 0,
-						outputTokens: usage.output_tokens || 0,
-						cacheWriteTokens: usage.cache_creation_input_tokens || undefined,
-						cacheReadTokens: usage.cache_read_input_tokens || undefined,
+						inputTokens: input_tokens,
+						outputTokens: output_tokens,
+						cacheWriteTokens: cache_creation_input_tokens || undefined,
+						cacheReadTokens: cache_read_input_tokens || undefined,
 					}
 
+					inputTokens += input_tokens
+					outputTokens += output_tokens
+					cacheWriteTokens += cache_creation_input_tokens || 0
+					cacheReadTokens += cache_read_input_tokens || 0
+
 					break
+				}
 				case "message_delta":
 					// Tells us stop_reason, stop_sequence, and output tokens
 					// along the way and at the end of the message.
@@ -200,24 +244,14 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 
 							yield { type: "text", text: chunk.content_block.text }
 							break
-						default: {
-							const block = chunk.content_block as {
-								type: string
-								text?: string
-								metadata?: { ui_only?: boolean; content?: string }
-							}
-
-							if (block.type === "ui") {
-								yield {
-									type: "text",
-									text: block.text || "",
-									metadata: block.metadata,
-								}
-							} else {
-								yield {
-									type: "text",
-									text: block.text || "",
-								}
+						case "tool_use": {
+							// Emit initial tool call partial with id and name
+							yield {
+								type: "tool_call_partial",
+								index: chunk.index,
+								id: chunk.content_block.id,
+								name: chunk.content_block.name,
+								arguments: undefined,
 							}
 							break
 						}
@@ -231,11 +265,43 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 						case "text_delta":
 							yield { type: "text", text: chunk.delta.text }
 							break
+						case "input_json_delta": {
+							// Emit tool call partial chunks as arguments stream in
+							yield {
+								type: "tool_call_partial",
+								index: chunk.index,
+								id: undefined,
+								name: undefined,
+								arguments: chunk.delta.partial_json,
+							}
+							break
+						}
 					}
 
 					break
 				case "content_block_stop":
+					// Block complete - no action needed for now.
+					// NativeToolCallParser handles tool call completion
+					// Note: Signature for multi-turn thinking would require using stream.finalMessage()
+					// after iteration completes, which requires restructuring the streaming approach.
 					break
+			}
+		}
+
+		if (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0) {
+			const { totalCost } = calculateApiCostAnthropic(
+				this.getModel().info,
+				inputTokens,
+				outputTokens,
+				cacheWriteTokens,
+				cacheReadTokens,
+			)
+
+			yield {
+				type: "usage",
+				inputTokens: 0,
+				outputTokens: 0,
+				totalCost,
 			}
 		}
 	}
@@ -243,91 +309,63 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	getModel() {
 		const modelId = this.options.apiModelId
 		let id = modelId && modelId in anthropicModels ? (modelId as AnthropicModelId) : anthropicDefaultModelId
-		const info: ModelInfo = anthropicModels[id]
+		let info: ModelInfo = anthropicModels[id]
 
-		// Track the original model ID for special variant handling
-		const virtualId = id
-
-		// The `:thinking` variant is a virtual identifier for the
-		// `claude-3-7-sonnet-20250219` model with a thinking budget.
-		// We can handle this more elegantly in the future.
-		if (id === "claude-3-7-sonnet-20250219:thinking") {
-			id = "claude-3-7-sonnet-20250219"
-		}
-
-		// Prioritize serverside model info
-		if (this.options.apiModelId && this.options.pearaiAgentModels) {
-			let modelInfo = null
-			if (this.options.apiModelId.startsWith("pearai")) {
-				modelInfo = this.options.pearaiAgentModels.models[this.options.apiModelId]
-			} else {
-				modelInfo = this.options.pearaiAgentModels.models[this.options.apiModelId || "pearai-model"]
-			}
-			if (modelInfo) {
-				return {
-					id: this.options.apiModelId,
-					info: modelInfo,
-					virtualId,
-					...getModelParams({
-						options: this.options,
-						model: info,
-						defaultMaxTokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
-					}),
+		// If 1M context beta is enabled for supported models, update the model info
+		if (
+			(id === "claude-sonnet-4-20250514" ||
+				id === "claude-sonnet-4-5" ||
+				id === "claude-sonnet-4-6" ||
+				id === "claude-opus-4-6") &&
+			this.options.anthropicBeta1MContext
+		) {
+			// Use the tier pricing for 1M context
+			const tier = info.tiers?.[0]
+			if (tier) {
+				info = {
+					...info,
+					contextWindow: tier.contextWindow,
+					inputPrice: tier.inputPrice,
+					outputPrice: tier.outputPrice,
+					cacheWritesPrice: tier.cacheWritesPrice,
+					cacheReadsPrice: tier.cacheReadsPrice,
 				}
 			}
 		}
 
+		const params = getModelParams({
+			format: "anthropic",
+			modelId: id,
+			model: info,
+			settings: this.options,
+			defaultTemperature: 0,
+		})
+
+		// The `:thinking` suffix indicates that the model is a "Hybrid"
+		// reasoning model and that reasoning is required to be enabled.
+		// The actual model ID honored by Anthropic's API does not have this
+		// suffix.
 		return {
-			id,
+			id: id === "claude-3-7-sonnet-20250219:thinking" ? "claude-3-7-sonnet-20250219" : id,
 			info,
-			virtualId, // Include the original ID to use for header selection
-			...getModelParams({ options: this.options, model: info, defaultMaxTokens: ANTHROPIC_DEFAULT_MAX_TOKENS }),
+			betas: id === "claude-3-7-sonnet-20250219:thinking" ? ["output-128k-2025-02-19"] : undefined,
+			...params,
 		}
 	}
 
 	async completePrompt(prompt: string) {
 		let { id: model, temperature } = this.getModel()
-		let requestTemperature: number | undefined = temperature
-		if (omitsSamplingParams(model)) {
-			requestTemperature = undefined
-		}
 
 		const message = await this.client.messages.create({
 			model,
 			max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
 			thinking: undefined,
-			temperature: requestTemperature,
+			temperature,
 			messages: [{ role: "user", content: prompt }],
 			stream: false,
 		})
 
 		const content = message.content.find(({ type }) => type === "text")
 		return content?.type === "text" ? content.text : ""
-	}
-
-	/**
-	 * Counts tokens for the given content using Anthropic's API
-	 *
-	 * @param content The content blocks to count tokens for
-	 * @returns A promise resolving to the token count
-	 */
-	override async countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number> {
-		try {
-			// Use the current model
-			const { id: model } = this.getModel()
-
-			const response = await this.client.messages.countTokens({
-				model,
-				messages: [{ role: "user", content: content }],
-			})
-
-			return response.input_tokens
-		} catch (error) {
-			// Log error but fallback to tiktoken estimation
-			console.warn("Anthropic token counting failed, using fallback", error)
-
-			// Use the base provider's implementation as fallback
-			return super.countTokens(content)
-		}
 	}
 }

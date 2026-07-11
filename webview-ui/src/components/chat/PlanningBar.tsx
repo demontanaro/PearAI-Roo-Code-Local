@@ -51,7 +51,7 @@ export const PlanningBar: FC<PlanningBarProps> = ({ isStreaming, requestedPlan, 
 					<Button
 						variant="default"
 						className="my-auto"
-						onClick={() => vscode.postMessage({ type: "openPearAICreatorFeedbackOverlay" })}>
+						onClick={() => vscode.postMessage({ type: "openPearAICreatorFeedbackOverlay" } as any)}>
 						Not Working?
 					</Button>
 					<Button

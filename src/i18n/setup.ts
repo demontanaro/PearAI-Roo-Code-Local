@@ -3,8 +3,8 @@ import i18next from "i18next"
 // Build translations object
 const translations: Record<string, Record<string, any>> = {}
 
-// Determine if running in test environment (jest)
-const isTestEnv = process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined
+// Determine if running in test environment
+const isTestEnv = process.env.NODE_ENV === "test"
 
 // Load translations based on environment
 if (!isTestEnv) {
@@ -20,7 +20,10 @@ if (!isTestEnv) {
 			const languageDirs = fs.readdirSync(localesDir, { withFileTypes: true })
 
 			const languages = languageDirs
-				.filter((dirent: { isDirectory: () => boolean }) => dirent.isDirectory())
+				.filter(
+					(dirent: { isDirectory: () => boolean; name: string }) =>
+						dirent.isDirectory() && !dirent.name.startsWith("."),
+				)
 				.map((dirent: { name: string }) => dirent.name)
 
 			// Process each language
@@ -28,7 +31,13 @@ if (!isTestEnv) {
 				const langPath = path.join(localesDir, language)
 
 				// Find all JSON files in the language directory
-				const files = fs.readdirSync(langPath).filter((file: string) => file.endsWith(".json"))
+				const files = fs
+					.readdirSync(langPath, { withFileTypes: true })
+					.filter(
+						(dirent: { isFile: () => boolean; name: string }) =>
+							dirent.isFile() && dirent.name.endsWith(".json") && !dirent.name.startsWith("."),
+					)
+					.map((dirent: { name: string }) => dirent.name)
 
 				// Initialize language in translations object
 				if (!translations[language]) {

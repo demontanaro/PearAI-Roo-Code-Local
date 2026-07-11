@@ -1,143 +1,77 @@
-# PearAI's Integration of Roo Code / Cline, a coding agent. Name attribution will always be kept in tact.
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>  
+</p>
 
-## Local Setup & Development
+# Roo Code
 
-1. **Clone** the repo:
-    ```bash
-    git clone https://github.com/RooVetGit/Roo-Code.git
-    ```
-2. **Download esbuild problem matchers**
-   Install https://market.trypear.ai/items?itemName=connor4312.esbuild-problem-matchers
-3. **Install dependencies**:
-    ```bash
-    npm run install:all
-    ```
-4. **Build** the extension:
+> Your AI-Powered Dev Team, Right in Your Editor
 
-    ```bash
-    npm run build
-    ```
+<details>
+  <summary>🌐 Available languages</summary>
 
-    - A `.vsix` file will appear in the `bin/` directory.
+- [English](README.md)
+- [Català](locales/ca/README.md)
+- [Deutsch](locales/de/README.md)
+- [Español](locales/es/README.md)
+- [Français](locales/fr/README.md)
+- [हिंदी](locales/hi/README.md)
+- [Bahasa Indonesia](locales/id/README.md)
+- [Italiano](locales/it/README.md)
+- [日本語](locales/ja/README.md)
+- [한국어](locales/ko/README.md)
+- [Nederlands](locales/nl/README.md)
+- [Polski](locales/pl/README.md)
+- [Português (BR)](locales/pt-BR/README.md)
+- [Русский](locales/ru/README.md)
+- [Türkçe](locales/tr/README.md)
+- [Tiếng Việt](locales/vi/README.md)
+- [简体中文](locales/zh-CN/README.md)
+- [繁體中文](locales/zh-TW/README.md)
+- ...
+      </details>
 
-5. **Start the webview (Vite/React app with HMR)**:
-    ```bash
-    npm run dev
-    ```
-6. **Debug**:
-    - Press `F5` (or **Run** → **Start Debugging**) in VSCode to open a new session with Roo Code loaded.
+---
 
-Changes to the webview will appear immediately. Changes to the core extension will require a restart of the extension host.
+## What Can Roo Code Do For YOU?
 
-Alternatively you can build a .vsix and install it directly in VSCode:
+- Generate Code from natural language descriptions and specs
+- Adapt with Modes: Code, Architect, Ask, Debug, and Custom Modes
+- Refactor & Debug existing code
+- Write & Update documentation
+- Answer Questions about your codebase
+- Automate repetitive tasks
+- Utilize MCP Servers
 
-```sh
-npm run build
-```
+## Modes
 
-A `.vsix` file will appear in the `bin/` directory which can be installed with:
+Roo Code adapts to how you work:
 
-```sh
-code --install-extension bin/roo-cline-<version>.vsix
-```
+- Code Mode: everyday coding, edits, and file ops
+- Architect Mode: plan systems, specs, and migrations
+- Ask Mode: fast answers, explanations, and docs
+- Debug Mode: trace issues, add logs, isolate root causes
+- Custom Modes: build specialized modes for your team or workflow
 
-We use [changesets](https://github.com/changesets/changesets) for versioning and publishing. Check our `CHANGELOG.md` for release notes.
+Learn more: [Using Modes](https://roocodeinc.github.io/Roo-Code/basic-usage/using-modes) • [Custom Modes](https://roocodeinc.github.io/Roo-Code/advanced-usage/custom-modes)
 
-**Install** the `.vsix` manually if desired:
-`bash
-    code --install-extension bin/roo-code-4.0.0.vsix
-    `
-|
+## Resources
 
-## Local Mode Fork Notes
+- **[Documentation](https://roocodeinc.github.io/Roo-Code/):** The official guide to installing, configuring, and mastering Roo Code.
+- **[GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues):** Report bugs and track development.
 
-This fork is focused on one goal: run the agent without runtime dependency on PearAI hosted services, using a local OpenAI-compatible backend.
+---
 
-### Motivation
+## Disclaimer
 
-The upstream integration path expected PearAI-specific remote endpoints for model discovery, account login flows, and some provider wiring.
+The Roo Code Extension was shut down on May 15th.
 
-This fork replaces those runtime dependencies with a local-first path that works with any OpenAI-compatible server.
+- If you're looking for an alternative, check out [ZooCode](https://github.com/Zoo-Code-Org/Zoo-Code/) (a fork started by the Roo Code community) and [Cline](https://cline.bot/) (from where Roo Code originated).
+- If you were a paying user and have billing questions, please write [billing@roocode.com](mailto:billing@roocode.com).
 
-### Scope Of Changes
+**Please note** that Roo Code, Inc does **not** make any representations or warranties regarding any code, models, or other tools provided or made available in connection with Roo Code, any associated third-party tools, or any resulting outputs. You assume **all risks** associated with the use of any such tools or outputs; such tools are provided on an **"AS IS"** and **"AS AVAILABLE"** basis. Such risks may include, without limitation, intellectual property infringement, cyber vulnerabilities or attacks, bias, inaccuracies, errors, defects, viruses, downtime, property loss or damage, and/or personal injury. You are solely responsible for your use of any such tools or outputs (including, without limitation, the legality, appropriateness, and results thereof).
 
-1. Central local backend configuration
-
-- Added a single configuration source at src/shared/backendConfig.ts.
-- Default backend is: http://localhost:8080/v1.
-
-2. PearAI provider path refactored to local provider
-
-- Added src/api/providers/local/LocalProvider.ts.
-- PearAI handler now routes to a local OpenAI-compatible provider flow.
-- Removed mandatory PearAI account/token dependency in runtime execution.
-
-3. Model discovery migrated to OpenAI-compatible API
-
-- Replaced proprietary model list calls with GET /models.
-- Shared model mapping helpers were added in src/shared/pearaiApi.ts.
-
-4. MCP defaults no longer fetched remotely
-
-- Added src/services/mcp/localMcpConfig.ts for local static defaults/removals.
-- McpHub no longer fetches default MCP settings from PearAI remote endpoints.
-
-5. Remote auth flow removed from core runtime paths
-
-- Login/account redirect flow was removed from the extension/webview runtime path.
-- Local mode now informs users that remote login is not required.
-
-6. Telemetry behavior changed
-
-- Telemetry is disabled by default.
-- Telemetry initialization is gated by a central flag.
-
-7. CSP/connect-src now follows user settings
-
-- Webview CSP allowlist uses the configured backend origin from extension settings.
-- If a user changes Local OpenAI-compatible Base URL in settings, webview requests follow that value.
-
-### Installation
-
-Install the packaged extension from:
-
-- bin/pearai-roo-cline-3.15.3.vsix
-
-In VS Code / PearAI:
-
-1. Open Command Palette.
-2. Run Extensions: Install from VSIX...
-3. Select the VSIX file above.
-4. Reload the window if prompted.
-
-### Runtime Requirements
-
-Your backend must be OpenAI-compatible and expose at least:
-
-- GET /models
-- POST /chat/completions
-
-### User Configuration
-
-In extension settings (provider = pearai), set Local OpenAI-compatible Base URL to your backend, for example:
-
-- http://localhost:8080/v1
-- http://127.0.0.1:8080/v1
-- http://192.168.x.x:8080/v1
-- https://your-host.example/v1
-
-### Validation Status
-
-- Build and VSIX packaging pass in this fork.
-- Since local backends vary, users should still verify compatibility with their specific server/model setup.
-
-### Compatibility Notes
-
-- If PearAI bundles an extension with the same extension ID, installing this VSIX updates/replaces it in the user profile.
-- This fork is intended for local/self-hosted OpenAI-compatible deployments.
-
-<!-- END CONTRIBUTORS SECTION -->
+---
 
 ## License
 
-[Apache 2.0 © 2025 Roo Veterinary, Inc.](./LICENSE)
+[Apache 2.0 © 2026 Roo Code, Inc.](./LICENSE)

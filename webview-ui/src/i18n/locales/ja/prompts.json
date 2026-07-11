@@ -1,13 +1,16 @@
 {
-	"title": "プロンプト",
+	"title": "モード",
 	"done": "完了",
 	"modes": {
 		"title": "モード",
 		"createNewMode": "新しいモードを作成",
+		"importMode": "モードをインポート",
+		"noMatchFound": "モードが見つかりません",
 		"editModesConfig": "モード設定を編集",
 		"editGlobalModes": "グローバルモードを編集",
-		"editProjectModes": "プロジェクトモードを編集 (.pearai-agent-ignore)",
-		"createModeHelpText": "+ をクリックして新しいカスタムモードを作成するか、チャットで Agent に作成を依頼してください！"
+		"editProjectModes": "プロジェクトモードを編集 (.roomodes)",
+		"createModeHelpText": "モードはRooの振る舞いを調整する専門的なペルソナです。<0>モードの使用について学ぶ</0>か、<1>モードのカスタマイズについて学ぶ</1>。",
+		"selectMode": "モードを検索"
 	},
 	"apiConfiguration": {
 		"title": "API設定",
@@ -22,7 +25,6 @@
 		"toolNames": {
 			"read": "ファイルを読み込む",
 			"edit": "ファイルを編集",
-			"browser": "ブラウザを使用",
 			"command": "コマンドを実行",
 			"mcp": "MCP を使用"
 		},
@@ -33,16 +35,45 @@
 		"resetToDefault": "デフォルトにリセット",
 		"description": "このモードのRooの専門知識と個性を定義します。この説明は、Rooが自身をどのように表現し、タスクにどのように取り組むかを形作ります。"
 	},
+	"description": {
+		"title": "短い説明（人間向け）",
+		"resetToDefault": "デフォルトの説明にリセット",
+		"description": "モードセレクタのドロップダウンに表示される簡単な説明。"
+	},
+	"whenToUse": {
+		"title": "使用タイミング（オプション）",
+		"description": "このモードをいつ使用すべきかを説明します。これはOrchestratorがタスクに適切なモードを選択するのに役立ちます。",
+		"resetToDefault": "「使用タイミング」説明をデフォルトにリセット"
+	},
 	"customInstructions": {
 		"title": "モード固有のカスタム指示（オプション）",
 		"resetToDefault": "デフォルトにリセット",
 		"description": "{{modeName}}モードに特化した行動ガイドラインを追加します。",
-		"loadFromFile": "{{mode}}モード固有のカスタム指示は、ワークスペースの<span>.pearai-agent/rules-{{slug}}/</span>フォルダからも読み込めます（.roorules-{{slug}}と.clinerules-{{slug}}は非推奨であり、まもなく機能しなくなります）。"
+		"loadFromFile": "{{mode}}モード固有のカスタム指示は、ワークスペースの<span>.roo/rules-{{slug}}/</span>フォルダまたはグローバル<0>.roo/rules-{{slug}}/</0>からも読み込むことができます（.roorules-{{slug}}と.clinerules-{{slug}}は非推奨で、まもなく動作しなくなります）。"
+	},
+	"exportMode": {
+		"title": "モードをエクスポート",
+		"description": "このモードをすべてのルールを含むYAMLファイルにエクスポートして、他のユーザーと簡単に共有できます。",
+		"export": "モードをエクスポート",
+		"exporting": "エクスポート中..."
+	},
+	"importMode": {
+		"selectLevel": "このモードをインポートする場所を選択してください：",
+		"import": "インポート",
+		"importing": "インポート中...",
+		"global": {
+			"label": "グローバルレベル",
+			"description": "すべてのプロジェクトで利用可能です。ルールはカスタム指示にマージされます。"
+		},
+		"project": {
+			"label": "プロジェクトレベル",
+			"description": "このワークスペースでのみ利用可能です。エクスポートされたモードにルールファイルが含まれていた場合、それらは.roo/rules-{slug}/フォルダに再作成されます。"
+		}
 	},
 	"globalCustomInstructions": {
 		"title": "すべてのモードのカスタム指示",
-		"description": "これらの指示はすべてのモードに適用されます。モード固有の指示で強化できる基本的な動作セットを提供します。\nRooにエディタの表示言語({{language}})とは異なる言語で考えたり話したりさせたい場合は、ここで指定できます。",
-		"loadFromFile": "指示はワークスペースの<span>.pearai-agent/rules/</span>フォルダからも読み込めます（.roorules と .clinerules は非推奨であり、まもなく機能しなくなります）。"
+		"description": "これらの指示はすべてのモードに適用されます。モード固有の指示で強化できる基本的な動作セットを提供します。<0>詳細はこちら</0>",
+		"loadFromFile": "指示は、ワークスペースの<span>.roo/rules/</span>フォルダまたはグローバル<0>.roo/rules/</0>からも読み込むことができます（.roorulesと.clinerulesは非推奨で、まもなく動作しなくなります）。"
 	},
 	"systemPrompt": {
 		"preview": "システムプロンプトのプレビュー",
@@ -58,12 +89,24 @@
 			"apiConfigDescription": "プロンプトの強化に常に使用するAPI設定を選択するか、現在選択されているものを使用できます",
 			"useCurrentConfig": "現在選択されているAPI設定を使用",
 			"testPromptPlaceholder": "強化をテストするプロンプトを入力してください",
-			"previewButton": "プロンプト強化のプレビュー"
+			"previewButton": "プロンプト強化のプレビュー",
+			"testEnhancement": "強化をテスト",
+			"includeTaskHistory": "タスク履歴をコンテキストとして含める",
+			"includeTaskHistoryDescription": "有効にすると、現在の会話の最後の10メッセージがプロンプト強化時にコンテキストとして含まれ、より関連性が高くコンテキストを意識した提案の生成に役立ちます。"
+		},
+		"condense": {
+			"apiConfiguration": "コンテキスト圧縮のためのAPI構成",
+			"apiConfigDescription": "コンテキスト圧縮操作に使用するAPI構成を選択します。現在アクティブな構成を使用するには、選択しないままにします。",
+			"useCurrentConfig": "現在選択されているAPI構成を使用する"
 		},
 		"types": {
 			"ENHANCE": {
 				"label": "プロンプトを強化",
 				"description": "プロンプト強化を使用して、入力に合わせたカスタマイズされた提案や改善を得ることができます。これにより、Rooがあなたの意図を理解し、最適な回答を提供できます。チャットの✨アイコンから利用できます。"
+			},
+			"CONDENSE": {
+				"label": "コンテキスト圧縮",
+				"description": "トークン制限を管理するために会話のコンテキストを圧縮する方法を設定します。このプロンプトは、手動および自動のコンテキスト圧縮操作の両方に使用されます。"
 			},
 			"EXPLAIN": {
 				"label": "コードを説明",
@@ -99,10 +142,6 @@
 			}
 		}
 	},
-	"advancedSystemPrompt": {
-		"title": "詳細設定：システムプロンプトの上書き",
-		"description": "ワークスペースの<span>.pearai-agent/system-prompt-{{slug}}</span>にファイルを作成することで、このモードのシステムプロンプト（役割定義とカスタム指示以外）を完全に置き換えることができます。これは組み込みの安全対策と一貫性チェック（特にツールの使用に関して）をバイパスする非常に高度な機能なので、注意して使用してください！"
-	},
 	"createModeDialog": {
 		"title": "新しいモードを作成",
 		"close": "閉じる",
@@ -122,7 +161,7 @@
 				"description": "すべてのワークスペースで利用可能"
 			},
 			"project": {
-				"label": "プロジェクト固有 (.pearai-agent-ignore)",
+				"label": "プロジェクト固有 (.roomodes)",
 				"description": "このワークスペースでのみ使用可能、グローバルよりも優先"
 			}
 		},
@@ -130,9 +169,17 @@
 			"label": "役割の定義",
 			"description": "このモードのRooの専門知識と個性を定義します。"
 		},
+		"whenToUse": {
+			"label": "使用タイミング（オプション）",
+			"description": "このモードが最も効果的なタイミングと、どのようなタイプのタスクに適しているかを明確に説明します。"
+		},
 		"tools": {
 			"label": "利用可能なツール",
 			"description": "このモードが使用できるツールを選択します。"
+		},
+		"description": {
+			"label": "短い説明（人間向け）",
+			"description": "モードセレクタのドロップダウンに表示される簡単な説明。"
 		},
 		"customInstructions": {
 			"label": "カスタム指示（オプション）",
@@ -144,5 +191,13 @@
 		},
 		"deleteMode": "モードを削除"
 	},
-	"allFiles": "すべてのファイル"
+	"allFiles": "すべてのファイル",
+	"deleteMode": {
+		"title": "モードを削除",
+		"message": "モード「{{modeName}}」を削除してもよろしいですか？",
+		"rulesFolder": "このモードには{{folderPath}}にルールフォルダがあり、それも削除されます。",
+		"descriptionNoRules": "このカスタムモードを削除してもよろしいですか？",
+		"confirm": "削除",
+		"cancel": "キャンセル"
+	}
 }

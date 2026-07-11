@@ -1,4 +1,4 @@
-import { mentionRegexGlobal } from "@roo/shared/context-mentions"
+import { mentionRegexGlobal } from "@roo/context-mentions"
 
 import { vscode } from "../../utils/vscode"
 
@@ -21,7 +21,7 @@ export const Mention = ({ text, withShadow = false }: MentionProps) => {
 			return (
 				<span
 					key={index}
-					className={`${withShadow ? "mention-context-highlight-with-shadow" : "mention-context-highlight"} cursor-pointer`}
+					className={`${withShadow ? "mention-context-highlight-with-shadow" : "mention-context-highlight"} text-[0.9em] cursor-pointer`}
 					onClick={() => vscode.postMessage({ type: "openMention", text: part })}>
 					@{part}
 				</span>
