@@ -1,8 +1,9 @@
 import * as vscode from "vscode"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { assert } from "../utils/util"
-import { PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG } from "../shared/modes"
 // import { PearAIExtensionExports } from "@pearai/core"
+
+const PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG = "pearai-creator-webapp-manager"
 
 export const getPearaiExtension = async () => {
 	const pearAiExtension = vscode.extensions.getExtension("pearai.pearai")
@@ -55,21 +56,18 @@ export const registerPearListener = async (provider: ClineProvider) => {
 		if(msg.newProjectType === "WEBAPP") {
 			// Only switch to the creator manager if we're creating a new project
 			// TODO: later when we need to make a different type of project, we need to change this
-			await provider.handleModeSwitch(PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG);
+			try {
+				await provider.handleModeSwitch(PEARAI_CREATOR_MODE_WEBAPP_MANAGER_SLUG as any)
+			} catch {
+				// Ignore when the custom creator mode is not registered.
+			}
 		}
 
 		// Clicl the chat btn
 		await provider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 
-		const creatorModeConfig = {
-			creatorMode: true,
-			newProjectType: msg.newProjectType,
-			newProjectPath: msg.newProjectPath,
-		}
-
-
 		// Initialize with task
-		await provider.initClineWithTask(msg.plan, msg.images, undefined, undefined, creatorModeConfig);
+		await provider.createTask(msg.plan, msg.images)
 	});
 	// If there's a creator event in the cache after the extensions were refreshed, we need to get it!
 	exports.pearAPI.creatorMode.triggerCachedCreatorEvent(true);
@@ -83,7 +81,7 @@ export const registerPearListener = async (provider: ClineProvider) => {
 			sidebarProvider.postMessageToWebview({
 				type: "creatorModeUpdate",
 				text: state,
-			});
+			} as any)
 		}
 	});
 
@@ -100,7 +98,7 @@ async function ensureViewIsReady(provider: ClineProvider): Promise<void> {
 	// Otherwise, we need to wait for it to initialize
 	return new Promise<void>((resolve) => {
 		// Set up a one-time listener for when the view is ready
-		const disposable = provider.on("clineCreated", () => {
+		const disposable = (provider as any).on("clineCreated", () => {
 			// Clean up the listener
 			disposable.dispose()
 			resolve()
