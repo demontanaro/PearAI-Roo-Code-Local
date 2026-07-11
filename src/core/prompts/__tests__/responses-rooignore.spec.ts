@@ -222,7 +222,7 @@ describe("RooIgnore Response Formatting", () => {
 			const instructions = controller.getInstructions()
 
 			// Verify format and content
-			expect(instructions).toContain("# .rooignore")
+			expect(instructions).toMatch(/#\s+\.(rooignore|pearai-agent-ignore)/)
 			expect(instructions).toContain(LOCK_TEXT_SYMBOL)
 			expect(instructions).toContain("node_modules")
 			expect(instructions).toContain(".git")

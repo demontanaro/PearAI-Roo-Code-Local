@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { ModelInfo } from "../../../src/shared/api"
+import type { ModelInfo, ProviderSettings } from "@roo-code/types"
 import {
 	buildPearAIAgentModelsConfig,
 	fetchOpenAICompatibleModelIds,
@@ -7,9 +7,8 @@ import {
 	pearaiDefaultModelInfo,
 	PEARAI_URL,
 } from "../../../src/shared/pearaiApi"
-import type { ApiConfiguration } from "../../../src/shared/api"
 
-export const usePearAIModels = (apiConfiguration?: ApiConfiguration) => {
+export const usePearAIModels = (apiConfiguration?: ProviderSettings) => {
 	const [pearaiModels, setPearAIModels] = useState<Record<string, ModelInfo>>({
 		[pearaiDefaultModelId]: pearaiDefaultModelInfo,
 	})
@@ -17,7 +16,9 @@ export const usePearAIModels = (apiConfiguration?: ApiConfiguration) => {
 	useEffect(() => {
 		const fetchPearAIModels = async () => {
 			try {
-				const modelIds = await fetchOpenAICompatibleModelIds(apiConfiguration?.pearaiBaseUrl || PEARAI_URL)
+				const modelIds = await fetchOpenAICompatibleModelIds(
+					(apiConfiguration as any)?.pearaiBaseUrl || PEARAI_URL,
+				)
 				const config = buildPearAIAgentModelsConfig(modelIds)
 
 				if (config.models && Object.keys(config.models).length > 0) {
@@ -28,10 +29,10 @@ export const usePearAIModels = (apiConfiguration?: ApiConfiguration) => {
 			}
 		}
 
-		if (apiConfiguration?.apiProvider === "pearai") {
+		if ((apiConfiguration as any)?.apiProvider === "pearai") {
 			fetchPearAIModels()
 		}
-	}, [apiConfiguration?.apiProvider, apiConfiguration?.pearaiBaseUrl])
+	}, [(apiConfiguration as any)?.apiProvider, (apiConfiguration as any)?.pearaiBaseUrl])
 
 	return {
 		models: pearaiModels,

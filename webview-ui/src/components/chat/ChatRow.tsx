@@ -38,7 +38,6 @@ import McpResourceRow from "../mcp/McpResourceRow"
 
 import { Mention } from "./Mention"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
-import { vscEditorBackground } from "../ui"
 import { FollowUpSuggest } from "./FollowUpSuggest"
 import { BatchFilePermission } from "./BatchFilePermission"
 import { BatchDiffApproval } from "./BatchDiffApproval"
