@@ -6,6 +6,9 @@
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
+> This PearAI fork preserves the local OpenAI-compatible AI server flow used by the extension.
+> Current fork release: [PearAI Roo Local v3.54.0](https://github.com/demontanaro/PearAI-Roo-Code-Local/releases/tag/v3.54.0)
+
 <details>
   <summary>🌐 Available languages</summary>
 
