@@ -1,13 +1,8 @@
 import OpenAI from "openai"
 
-import { type ModelInfo, type ModelRecord } from "@roo-code/types"
-
-import { ApiHandlerOptions, RouterName } from "../../shared/api"
-
+import { ApiHandlerOptions, RouterName, ModelRecord, ModelInfo } from "../../shared/api"
 import { BaseProvider } from "./base-provider"
-import { getModels, getModelsFromCache } from "./fetchers/modelCache"
-
-import { DEFAULT_HEADERS } from "./constants"
+import { getModels } from "./fetchers/cache"
 
 type RouterProviderOptions = {
 	name: RouterName
@@ -45,40 +40,20 @@ export abstract class RouterProvider extends BaseProvider {
 		this.defaultModelId = defaultModelId
 		this.defaultModelInfo = defaultModelInfo
 
-		this.client = new OpenAI({
-			baseURL,
-			apiKey,
-			defaultHeaders: {
-				...DEFAULT_HEADERS,
-				...(options.openAiHeaders || {}),
-			},
-		})
+		this.client = new OpenAI({ baseURL, apiKey })
 	}
 
 	public async fetchModel() {
-		this.models = await getModels({ provider: this.name, apiKey: this.client.apiKey, baseUrl: this.client.baseURL })
+		this.models = await getModels(this.name)
 		return this.getModel()
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.modelId ?? this.defaultModelId
 
-		// First check instance models (populated by fetchModel)
-		if (this.models[id]) {
-			return { id, info: this.models[id] }
-		}
-
-		// Fall back to global cache (synchronous disk/memory cache)
-		// This ensures models are available before fetchModel() is called
-		const cachedModels = getModelsFromCache(this.name)
-		if (cachedModels?.[id]) {
-			// Also populate instance models for future calls
-			this.models = cachedModels
-			return { id, info: cachedModels[id] }
-		}
-
-		// Last resort: return default model
-		return { id: this.defaultModelId, info: this.defaultModelInfo }
+		return this.models[id]
+			? { id, info: this.models[id] }
+			: { id: this.defaultModelId, info: this.defaultModelInfo }
 	}
 
 	protected supportsTemperature(modelId: string): boolean {

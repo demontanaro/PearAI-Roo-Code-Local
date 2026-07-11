@@ -35,24 +35,5 @@
 	"confirmDeleteTasks": "Bist du sicher, dass du {{count}} Aufgaben löschen möchtest?",
 	"deleteTasksWarning": "Gelöschte Aufgaben können nicht wiederhergestellt werden. Bitte vergewissere dich, dass du fortfahren möchtest.",
 	"deleteItems": "{{count}} Elemente löschen",
-	"workspace": {
-		"prefix": "Arbeitsbereich:",
-		"current": "Aktuell",
-		"all": "Alle"
-	},
-	"sort": {
-		"prefix": "Sortieren:",
-		"newest": "Neueste",
-		"oldest": "Älteste",
-		"mostExpensive": "Teuerste",
-		"mostTokens": "Meiste Tokens",
-		"mostRelevant": "Relevanteste"
-	},
-	"viewAllHistory": "Alle anzeigen",
-	"subtasks_one": "{{count}} Teilaufgabe",
-	"subtasks_other": "{{count}} Teilaufgaben",
-	"subtaskTag": "Teilaufgabe",
-	"deleteWithSubtasks": "Dies löscht auch {{count}} Teilaufgabe(n). Bist du sicher?",
-	"expandSubtasks": "Teilaufgaben erweitern",
-	"collapseSubtasks": "Teilaufgaben einklappen"
+	"showAllWorkspaces": "Aufgaben aus allen Arbeitsbereichen anzeigen"
 }

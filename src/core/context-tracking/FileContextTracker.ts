@@ -1,7 +1,6 @@
-import { safeWriteJson } from "../../utils/safeWriteJson"
 import * as path from "path"
 import * as vscode from "vscode"
-import { getTaskDirectoryPath } from "../../utils/storage"
+import { getTaskDirectoryPath } from "../../shared/storagePathManager"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { fileExistsAtPath } from "../../utils/fs"
 import fs from "fs/promises"
@@ -131,7 +130,7 @@ export class FileContextTracker {
 			const globalStoragePath = this.getContextProxy()!.globalStorageUri.fsPath
 			const taskDir = await getTaskDirectoryPath(globalStoragePath, taskId)
 			const filePath = path.join(taskDir, GlobalFileNames.taskMetadata)
-			await safeWriteJson(filePath, metadata)
+			await fs.writeFile(filePath, JSON.stringify(metadata, null, 2))
 		} catch (error) {
 			console.error("Failed to save task metadata:", error)
 		}
@@ -182,7 +181,6 @@ export class FileContextTracker {
 					newEntry.roo_read_date = now
 					newEntry.roo_edit_date = now
 					this.checkpointPossibleFiles.add(filePath)
-					this.markFileAsEditedByRoo(filePath)
 					break
 
 				// read_tool/file_mentioned: Roo has read the file via a tool or file mention
@@ -204,59 +202,6 @@ export class FileContextTracker {
 		const files = Array.from(this.recentlyModifiedFiles)
 		this.recentlyModifiedFiles.clear()
 		return files
-	}
-
-	/**
-	 * Gets a list of unique file paths that Roo has read during this task.
-	 * Files are sorted by most recently read first, so if there's a character
-	 * budget during folded context generation, the most relevant (recent) files
-	 * are prioritized.
-	 *
-	 * @param sinceTimestamp - Optional timestamp to filter files read after this time
-	 * @returns Array of unique file paths that have been read, most recent first
-	 */
-	async getFilesReadByRoo(sinceTimestamp?: number): Promise<string[]> {
-		try {
-			const metadata = await this.getTaskMetadata(this.taskId)
-
-			const readEntries = metadata.files_in_context.filter((entry) => {
-				// Only include files that were read by Roo (not user edits)
-				const isReadByRoo = entry.record_source === "read_tool" || entry.record_source === "file_mentioned"
-				if (!isReadByRoo) {
-					return false
-				}
-
-				// If sinceTimestamp is provided, only include files read after that time
-				if (sinceTimestamp && entry.roo_read_date) {
-					return entry.roo_read_date >= sinceTimestamp
-				}
-
-				return true
-			})
-
-			// Sort by roo_read_date descending (most recent first)
-			// Entries without a date go to the end
-			readEntries.sort((a, b) => {
-				const dateA = a.roo_read_date ?? 0
-				const dateB = b.roo_read_date ?? 0
-				return dateB - dateA
-			})
-
-			// Deduplicate while preserving order (first occurrence = most recent read)
-			const seen = new Set<string>()
-			const uniquePaths: string[] = []
-			for (const entry of readEntries) {
-				if (!seen.has(entry.path)) {
-					seen.add(entry.path)
-					uniquePaths.push(entry.path)
-				}
-			}
-
-			return uniquePaths
-		} catch (error) {
-			console.error("Failed to get files read by Roo:", error)
-			return []
-		}
 	}
 
 	getAndClearCheckpointPossibleFile(): string[] {

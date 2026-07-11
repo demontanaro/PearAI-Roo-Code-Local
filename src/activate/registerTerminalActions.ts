@@ -1,26 +1,28 @@
 import * as vscode from "vscode"
-
-import { TerminalActionId, TerminalActionPromptType } from "@roo-code/types"
-
-import { getTerminalCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { Terminal } from "../integrations/terminal/Terminal"
 import { t } from "../i18n"
 
+const TERMINAL_COMMAND_IDS = {
+	ADD_TO_CONTEXT: "roo-cline.terminalAddToContext",
+	FIX: "roo-cline.terminalFixCommand",
+	EXPLAIN: "roo-cline.terminalExplainCommand",
+} as const
+
 export const registerTerminalActions = (context: vscode.ExtensionContext) => {
-	registerTerminalAction(context, "terminalAddToContext", "TERMINAL_ADD_TO_CONTEXT")
-	registerTerminalAction(context, "terminalFixCommand", "TERMINAL_FIX")
-	registerTerminalAction(context, "terminalExplainCommand", "TERMINAL_EXPLAIN")
+	registerTerminalAction(context, TERMINAL_COMMAND_IDS.ADD_TO_CONTEXT, "TERMINAL_ADD_TO_CONTEXT")
+	registerTerminalAction(context, TERMINAL_COMMAND_IDS.FIX, "TERMINAL_FIX")
+	registerTerminalAction(context, TERMINAL_COMMAND_IDS.EXPLAIN, "TERMINAL_EXPLAIN")
 }
 
 const registerTerminalAction = (
 	context: vscode.ExtensionContext,
-	command: TerminalActionId,
-	promptType: TerminalActionPromptType,
+	command: string,
+	promptType: "TERMINAL_ADD_TO_CONTEXT" | "TERMINAL_FIX" | "TERMINAL_EXPLAIN",
 ) => {
 	context.subscriptions.push(
-		vscode.commands.registerCommand(getTerminalCommand(command), async (args: any) => {
-			let content = args?.selection
+		vscode.commands.registerCommand(command, async (args: any) => {
+			let content = args.selection
 
 			if (!content || content === "") {
 				content = await Terminal.getTerminalContents(promptType === "TERMINAL_ADD_TO_CONTEXT" ? -1 : 1)

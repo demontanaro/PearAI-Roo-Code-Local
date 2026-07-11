@@ -1,186 +1,1697 @@
-import {
-	type ModelInfo,
-	type ProviderSettings,
-	type DynamicProvider,
-	type LocalProvider,
-	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	isDynamicProvider,
-	isLocalProvider,
-} from "@roo-code/types"
+import { ModelInfo, ProviderName, ProviderSettings } from "../schemas"
 
-// ApiHandlerOptions
-// Extend ProviderSettings (minus apiProvider) with handler-specific toggles.
-export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
-	/**
-	 * When true and using OpenAI Responses API models that support reasoning summaries,
-	 * include reasoning.summary: "auto" so the API returns summaries (we already parse
-	 * and surface them). Defaults to true; set to false to disable summaries.
-	 */
-	enableResponsesReasoningSummary?: boolean
-	/**
-	 * Optional override for Ollama's num_ctx parameter.
-	 * When set, this value will be used in Ollama chat requests.
-	 * When undefined, Ollama will use the model's default num_ctx from the Modelfile.
-	 */
-	ollamaNumCtx?: number
+export type { ModelInfo, ProviderName as ApiProvider }
+
+export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider" | "id">
+
+export type ApiConfiguration = ProviderSettings
+
+// Anthropic
+// https://docs.anthropic.com/en/docs/about-claude/models
+export type AnthropicModelId = keyof typeof anthropicModels
+export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-4-6"
+export const anthropicModels = {
+	"claude-fable-5": {
+		maxTokens: 128_000,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0,
+		outputPrice: 50.0,
+		cacheWritesPrice: 12.5,
+		cacheReadsPrice: 1.0,
+		description:
+			"Anthropic's most capable widely released model for demanding reasoning and long-horizon agentic work.",
+	},
+	"claude-opus-4-8": {
+		maxTokens: 128_000,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 5.0,
+		outputPrice: 25.0,
+		cacheWritesPrice: 6.25,
+		cacheReadsPrice: 0.5,
+		description: "Opus-tier model for complex reasoning, long-horizon agentic coding, and high-autonomy work.",
+	},
+	"claude-sonnet-4-6": {
+		maxTokens: 64_000,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		description: "Balanced Claude model for speed, intelligence, coding, and agentic workflows.",
+		thinking: false,
+	},
+	"claude-haiku-4-5-20251001": {
+		maxTokens: 64_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.0,
+		outputPrice: 5.0,
+		cacheWritesPrice: 1.25,
+		cacheReadsPrice: 0.1,
+		description: "Fast Claude model with near-frontier intelligence for latency-sensitive workloads.",
+	},
+	"claude-3-7-sonnet-20250219:thinking": {
+		maxTokens: 128_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0, // $3 per million input tokens
+		outputPrice: 15.0, // $15 per million output tokens
+		cacheWritesPrice: 3.75, // $3.75 per million tokens
+		cacheReadsPrice: 0.3, // $0.30 per million tokens
+		thinking: true,
+	},
+	"claude-3-7-sonnet-20250219": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0, // $3 per million input tokens
+		outputPrice: 15.0, // $15 per million output tokens
+		cacheWritesPrice: 3.75, // $3.75 per million tokens
+		cacheReadsPrice: 0.3, // $0.30 per million tokens
+		thinking: false,
+	},
+	"claude-3-5-sonnet-20241022": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0, // $3 per million input tokens
+		outputPrice: 15.0, // $15 per million output tokens
+		cacheWritesPrice: 3.75, // $3.75 per million tokens
+		cacheReadsPrice: 0.3, // $0.30 per million tokens
+	},
+	"claude-3-5-haiku-20241022": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.0,
+		outputPrice: 5.0,
+		cacheWritesPrice: 1.25,
+		cacheReadsPrice: 0.1,
+	},
+	"claude-3-opus-20240229": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+		cacheWritesPrice: 18.75,
+		cacheReadsPrice: 1.5,
+	},
+	"claude-3-haiku-20240307": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.25,
+		outputPrice: 1.25,
+		cacheWritesPrice: 0.3,
+		cacheReadsPrice: 0.03,
+	},
+} as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
+
+// Amazon Bedrock
+// https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
+export interface MessageContent {
+	type: "text" | "image" | "video" | "tool_use" | "tool_result"
+	text?: string
+	source?: {
+		type: "base64"
+		data: string | Uint8Array // string for Anthropic, Uint8Array for Bedrock
+		media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"
+	}
+	// Video specific fields
+	format?: string
+	s3Location?: {
+		uri: string
+		bucketOwner?: string
+	}
+	// Tool use and result fields
+	toolUseId?: string
+	name?: string
+	input?: any
+	output?: any // Used for tool_result type
 }
 
-// RouterName
+export type BedrockModelId = keyof typeof bedrockModels
+export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-3-7-sonnet-20250219-v1:0"
+export const bedrockDefaultPromptRouterModelId: BedrockModelId = "anthropic.claude-3-sonnet-20240229-v1:0"
 
-export type RouterName = DynamicProvider | LocalProvider
+// March, 12 2025 - updated prices to match US-West-2 list price shown at https://aws.amazon.com/bedrock/pricing/
+// including older models that are part of the default prompt routers AWS enabled for GA of the promot router feature
+export const bedrockModels = {
+	"amazon.nova-pro-v1:0": {
+		maxTokens: 5000,
+		contextWindow: 300_000,
+		supportsImages: true,
+		supportsComputerUse: false,
+		supportsPromptCache: true,
+		inputPrice: 0.8,
+		outputPrice: 3.2,
+		cacheWritesPrice: 0.8, // per million tokens
+		cacheReadsPrice: 0.2, // per million tokens
+		minTokensPerCachePoint: 1,
+		maxCachePoints: 1,
+		cachableFields: ["system"],
+	},
+	"amazon.nova-pro-latency-optimized-v1:0": {
+		maxTokens: 5000,
+		contextWindow: 300_000,
+		supportsImages: true,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 1.0,
+		outputPrice: 4.0,
+		cacheWritesPrice: 1.0, // per million tokens
+		cacheReadsPrice: 0.25, // per million tokens
+		description: "Amazon Nova Pro with latency optimized inference",
+	},
+	"amazon.nova-lite-v1:0": {
+		maxTokens: 5000,
+		contextWindow: 300_000,
+		supportsImages: true,
+		supportsComputerUse: false,
+		supportsPromptCache: true,
+		inputPrice: 0.06,
+		outputPrice: 0.24,
+		cacheWritesPrice: 0.06, // per million tokens
+		cacheReadsPrice: 0.015, // per million tokens
+		minTokensPerCachePoint: 1,
+		maxCachePoints: 1,
+		cachableFields: ["system"],
+	},
+	"amazon.nova-micro-v1:0": {
+		maxTokens: 5000,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: true,
+		inputPrice: 0.035,
+		outputPrice: 0.14,
+		cacheWritesPrice: 0.035, // per million tokens
+		cacheReadsPrice: 0.00875, // per million tokens
+		minTokensPerCachePoint: 1,
+		maxCachePoints: 1,
+		cachableFields: ["system"],
+	},
+	"anthropic.claude-3-7-sonnet-20250219-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+	},
+	"anthropic.claude-3-5-sonnet-20241022-v2:0": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+	},
+	"anthropic.claude-3-5-haiku-20241022-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.8,
+		outputPrice: 4.0,
+		cacheWritesPrice: 1.0,
+		cacheReadsPrice: 0.08,
+		minTokensPerCachePoint: 2048,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+	},
+	"anthropic.claude-3-5-sonnet-20240620-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+	},
+	"anthropic.claude-3-opus-20240229-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+	},
+	"anthropic.claude-3-sonnet-20240229-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+	},
+	"anthropic.claude-3-haiku-20240307-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.25,
+		outputPrice: 1.25,
+	},
+	"anthropic.claude-2-1-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 100_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 8.0,
+		outputPrice: 24.0,
+		description: "Claude 2.1",
+	},
+	"anthropic.claude-2-0-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 100_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 8.0,
+		outputPrice: 24.0,
+		description: "Claude 2.0",
+	},
+	"anthropic.claude-instant-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 100_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.8,
+		outputPrice: 2.4,
+		description: "Claude Instant",
+	},
+	"deepseek.r1-v1:0": {
+		maxTokens: 32_768,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 1.35,
+		outputPrice: 5.4,
+	},
+	"meta.llama3-3-70b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.72,
+		outputPrice: 0.72,
+		description: "Llama 3.3 Instruct (70B)",
+	},
+	"meta.llama3-2-90b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.72,
+		outputPrice: 0.72,
+		description: "Llama 3.2 Instruct (90B)",
+	},
+	"meta.llama3-2-11b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.16,
+		outputPrice: 0.16,
+		description: "Llama 3.2 Instruct (11B)",
+	},
+	"meta.llama3-2-3b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.15,
+		description: "Llama 3.2 Instruct (3B)",
+	},
+	"meta.llama3-2-1b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.1,
+		outputPrice: 0.1,
+		description: "Llama 3.2 Instruct (1B)",
+	},
+	"meta.llama3-1-405b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 2.4,
+		outputPrice: 2.4,
+		description: "Llama 3.1 Instruct (405B)",
+	},
+	"meta.llama3-1-70b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.72,
+		outputPrice: 0.72,
+		description: "Llama 3.1 Instruct (70B)",
+	},
+	"meta.llama3-1-70b-instruct-latency-optimized-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.9,
+		outputPrice: 0.9,
+		description: "Llama 3.1 Instruct (70B) (w/ latency optimized inference)",
+	},
+	"meta.llama3-1-8b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.22,
+		outputPrice: 0.22,
+		description: "Llama 3.1 Instruct (8B)",
+	},
+	"meta.llama3-70b-instruct-v1:0": {
+		maxTokens: 2048,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 2.65,
+		outputPrice: 3.5,
+	},
+	"meta.llama3-8b-instruct-v1:0": {
+		maxTokens: 2048,
+		contextWindow: 4_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.3,
+		outputPrice: 0.6,
+	},
+	"amazon.titan-text-lite-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.2,
+		description: "Amazon Titan Text Lite",
+	},
+	"amazon.titan-text-express-v1:0": {
+		maxTokens: 4096,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.2,
+		outputPrice: 0.6,
+		description: "Amazon Titan Text Express",
+	},
+	"amazon.titan-text-embeddings-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.1,
+		description: "Amazon Titan Text Embeddings",
+	},
+	"amazon.titan-text-embeddings-v2:0": {
+		maxTokens: 8192,
+		contextWindow: 8_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.02,
+		description: "Amazon Titan Text Embeddings V2",
+	},
+} as const satisfies Record<string, ModelInfo>
 
-export const isRouterName = (value: string): value is RouterName => isDynamicProvider(value) || isLocalProvider(value)
-
-export function toRouterName(value?: string): RouterName {
-	if (value && isRouterName(value)) {
-		return value
-	}
-
-	throw new Error(`Invalid router name: ${value}`)
+// Glama
+// https://glama.ai/models
+export const glamaDefaultModelId = "anthropic/claude-3-7-sonnet"
+export const glamaDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsComputerUse: true,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+	description:
+		"Claude 3.7 Sonnet is an advanced large language model with improved reasoning, coding, and problem-solving capabilities. It introduces a hybrid reasoning approach, allowing users to choose between rapid responses and extended, step-by-step processing for complex tasks. The model demonstrates notable improvements in coding, particularly in front-end development and full-stack updates, and excels in agentic workflows, where it can autonomously navigate multi-step processes. Claude 3.7 Sonnet maintains performance parity with its predecessor in standard mode while offering an extended reasoning mode for enhanced accuracy in math, coding, and instruction-following tasks. Read more at the [blog post here](https://www.anthropic.com/news/claude-3-7-sonnet)",
 }
 
-// Reasoning
-
-export const shouldUseReasoningBudget = ({
-	model,
-	settings,
-}: {
-	model: ModelInfo
-	settings?: ProviderSettings
-}): boolean => !!model.requiredReasoningBudget || (!!model.supportsReasoningBudget && !!settings?.enableReasoningEffort)
-
-export const shouldUseReasoningEffort = ({
-	model,
-	settings,
-}: {
-	model: ModelInfo
-	settings?: ProviderSettings
-}): boolean => {
-	// Explicit off switch
-	if (settings?.enableReasoningEffort === false) return false
-
-	// Selected effort from settings or model default
-	const selectedEffort = (settings?.reasoningEffort ?? (model as any).reasoningEffort) as
-		| "disable"
-		| "none"
-		| "minimal"
-		| "low"
-		| "medium"
-		| "high"
-		| undefined
-
-	// "disable" explicitly omits reasoning
-	if (selectedEffort === "disable") return false
-
-	const cap = model.supportsReasoningEffort as unknown
-
-	// Capability array: use only if selected is included (treat "none"/"minimal" as valid)
-	if (Array.isArray(cap)) {
-		return !!selectedEffort && (cap as ReadonlyArray<string>).includes(selectedEffort as string)
-	}
-
-	// Boolean capability: true → require a selected effort
-	if (model.supportsReasoningEffort === true) {
-		return !!selectedEffort
-	}
-
-	// Not explicitly supported: only allow when the model itself defines a default effort
-	// Ignore settings-only selections when capability is absent/false
-	const modelDefaultEffort = (model as any).reasoningEffort as
-		| "none"
-		| "minimal"
-		| "low"
-		| "medium"
-		| "high"
-		| undefined
-	return !!modelDefaultEffort
+// Requesty
+// https://requesty.ai/router-2
+export const requestyDefaultModelId = "anthropic/claude-3-7-sonnet-latest"
+export const requestyDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsComputerUse: true,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+	description:
+		"Claude 3.7 Sonnet is an advanced large language model with improved reasoning, coding, and problem-solving capabilities. It introduces a hybrid reasoning approach, allowing users to choose between rapid responses and extended, step-by-step processing for complex tasks. The model demonstrates notable improvements in coding, particularly in front-end development and full-stack updates, and excels in agentic workflows, where it can autonomously navigate multi-step processes. Claude 3.7 Sonnet maintains performance parity with its predecessor in standard mode while offering an extended reasoning mode for enhanced accuracy in math, coding, and instruction-following tasks. Read more at the [blog post here](https://www.anthropic.com/news/claude-3-7-sonnet)",
 }
 
-export const DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS = 16_384
-export const DEFAULT_HYBRID_REASONING_MODEL_THINKING_TOKENS = 8_192
-export const GEMINI_25_PRO_MIN_THINKING_TOKENS = 128
-
-// Max Tokens
-
-export const getModelMaxOutputTokens = ({
-	modelId,
-	model,
-	settings,
-	format,
-}: {
-	modelId: string
-	model: ModelInfo
-	settings?: ProviderSettings
-	format?: "anthropic" | "openai" | "gemini" | "openrouter"
-}): number | undefined => {
-	if (shouldUseReasoningBudget({ model, settings })) {
-		return settings?.modelMaxTokens || DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS
-	}
-
-	const isAnthropicContext =
-		modelId.includes("claude") ||
-		format === "anthropic" ||
-		(format === "openrouter" && modelId.startsWith("anthropic/"))
-
-	// For "Hybrid" reasoning models, discard the model's actual maxTokens for Anthropic contexts
-	if (model.supportsReasoningBudget && isAnthropicContext) {
-		return ANTHROPIC_DEFAULT_MAX_TOKENS
-	}
-
-	// For Anthropic contexts, always ensure a maxTokens value is set
-	if (isAnthropicContext && (!model.maxTokens || model.maxTokens === 0)) {
-		return ANTHROPIC_DEFAULT_MAX_TOKENS
-	}
-
-	// If model has explicit maxTokens, clamp it to 20% of the context window
-	// Exception: GPT-5 models should use their exact configured max output tokens
-	if (model.maxTokens) {
-		// Check if this is a GPT-5 model (case-insensitive)
-		const isGpt5Model = modelId.toLowerCase().includes("gpt-5")
-
-		// GPT-5 models bypass the 20% cap and use their full configured max tokens
-		if (isGpt5Model) {
-			return model.maxTokens
-		}
-
-		// All other models are clamped to 20% of context window
-		return Math.min(model.maxTokens, Math.ceil(model.contextWindow * 0.2))
-	}
-
-	// For non-Anthropic formats without explicit maxTokens, return undefined
-	if (format) {
-		return undefined
-	}
-
-	// Default fallback
-	return ANTHROPIC_DEFAULT_MAX_TOKENS
+// OpenRouter
+// https://openrouter.ai/models?order=newest&supported_parameters=tools
+export const openRouterDefaultModelId = "anthropic/claude-3.7-sonnet"
+export const openRouterDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsComputerUse: true,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+	description:
+		"Claude 3.7 Sonnet is an advanced large language model with improved reasoning, coding, and problem-solving capabilities. It introduces a hybrid reasoning approach, allowing users to choose between rapid responses and extended, step-by-step processing for complex tasks. The model demonstrates notable improvements in coding, particularly in front-end development and full-stack updates, and excels in agentic workflows, where it can autonomously navigate multi-step processes. Claude 3.7 Sonnet maintains performance parity with its predecessor in standard mode while offering an extended reasoning mode for enhanced accuracy in math, coding, and instruction-following tasks. Read more at the [blog post here](https://www.anthropic.com/news/claude-3-7-sonnet)",
 }
 
-// GetModelsOptions
+// Vertex AI
+// https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
+export type VertexModelId = keyof typeof vertexModels
+export const vertexDefaultModelId: VertexModelId = "claude-3-7-sonnet@20250219"
+export const vertexModels = {
+	"gemini-2.5-flash-preview-04-17:thinking": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 3.5,
+		thinking: true,
+		maxThinkingTokens: 24_576,
+	},
+	"gemini-2.5-flash-preview-04-17": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+		thinking: false,
+	},
+	"gemini-2.5-pro-preview-03-25": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 2.5,
+		outputPrice: 15,
+	},
+	"gemini-2.5-pro-exp-03-25": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-pro-exp-02-05": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-001": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+	},
+	"gemini-2.0-flash-lite-001": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.075,
+		outputPrice: 0.3,
+	},
+	"gemini-2.0-flash-thinking-exp-01-21": {
+		maxTokens: 8192,
+		contextWindow: 32_768,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-1.5-flash-002": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 0.075,
+		outputPrice: 0.3,
+	},
+	"gemini-1.5-pro-002": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.25,
+		outputPrice: 5,
+	},
+	"claude-3-7-sonnet@20250219:thinking": {
+		maxTokens: 64_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		thinking: true,
+	},
+	"claude-3-7-sonnet@20250219": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		thinking: false,
+	},
+	"claude-3-5-sonnet-v2@20241022": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsComputerUse: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+	},
+	"claude-3-5-sonnet@20240620": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+	},
+	"claude-3-5-haiku@20241022": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.0,
+		outputPrice: 5.0,
+		cacheWritesPrice: 1.25,
+		cacheReadsPrice: 0.1,
+	},
+	"claude-3-opus@20240229": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+		cacheWritesPrice: 18.75,
+		cacheReadsPrice: 1.5,
+	},
+	"claude-3-haiku@20240307": {
+		maxTokens: 4096,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.25,
+		outputPrice: 1.25,
+		cacheWritesPrice: 0.3,
+		cacheReadsPrice: 0.03,
+	},
+} as const satisfies Record<string, ModelInfo>
 
-// Allow callers to always pass apiKey/baseUrl without excess property errors,
-// while still enforcing required fields per provider where applicable.
-type CommonFetchParams = {
-	apiKey?: string
-	baseUrl?: string
+export const openAiModelInfoSaneDefaults: ModelInfo = {
+	maxTokens: -1,
+	contextWindow: 128_000,
+	supportsImages: true,
+	supportsPromptCache: false,
+	inputPrice: 0,
+	outputPrice: 0,
 }
 
-// Exhaustive, value-level map for all dynamic providers.
-// If a new dynamic provider is added in packages/types, this will fail to compile
-// until a corresponding entry is added here.
-const dynamicProviderExtras = {
-	openrouter: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	"vercel-ai-gateway": {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	litellm: {} as { apiKey: string; baseUrl: string },
-	requesty: {} as { apiKey?: string; baseUrl?: string },
-	unbound: {} as { apiKey?: string },
-	ollama: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	lmstudio: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	poe: {} as { apiKey?: string; baseUrl?: string },
-} as const satisfies Record<RouterName, object>
+// Gemini
+// https://ai.google.dev/gemini-api/docs/models/gemini
+export type GeminiModelId = keyof typeof geminiModels
+export const geminiDefaultModelId: GeminiModelId = "gemini-3.5-flash"
+export const geminiModels = {
+	"gemini-3.5-flash": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-3.1-pro-preview": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-3.1-flash-lite": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.5-pro": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.5-flash": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.5-flash-lite": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.5-flash-preview-04-17:thinking": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 3.5,
+		thinking: true,
+		maxThinkingTokens: 24_576,
+	},
+	"gemini-2.5-flash-preview-04-17": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+		thinking: false,
+	},
+	"gemini-2.5-pro-exp-03-25": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.5-pro-preview-03-25": {
+		maxTokens: 65_535,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
+		outputPrice: 15,
+		cacheReadsPrice: 0.625,
+		cacheWritesPrice: 4.5,
+		tiers: [
+			{
+				contextWindow: 200_000,
+				inputPrice: 1.25,
+				outputPrice: 10,
+				cacheReadsPrice: 0.31,
+			},
+			{
+				contextWindow: Infinity,
+				inputPrice: 2.5,
+				outputPrice: 15,
+				cacheReadsPrice: 0.625,
+			},
+		],
+	},
+	"gemini-2.0-flash-001": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 0.1,
+		outputPrice: 0.4,
+		cacheReadsPrice: 0.025,
+		cacheWritesPrice: 1.0,
+	},
+	"gemini-2.0-flash": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+	},
+	"gemini-2.0-flash-lite-preview-02-05": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-pro-exp-02-05": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-thinking-exp-01-21": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-thinking-exp-1219": {
+		maxTokens: 8192,
+		contextWindow: 32_767,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-exp": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-1.5-flash-002": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		isPromptCacheOptional: true,
+		inputPrice: 0.15, // This is the pricing for prompts above 128k tokens.
+		outputPrice: 0.6,
+		cacheReadsPrice: 0.0375,
+		cacheWritesPrice: 1.0,
+		tiers: [
+			{
+				contextWindow: 128_000,
+				inputPrice: 0.075,
+				outputPrice: 0.3,
+				cacheReadsPrice: 0.01875,
+			},
+			{
+				contextWindow: Infinity,
+				inputPrice: 0.15,
+				outputPrice: 0.6,
+				cacheReadsPrice: 0.0375,
+			},
+		],
+	},
+	"gemini-1.5-flash-exp-0827": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-1.5-flash-8b-exp-0827": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-1.5-pro-002": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-1.5-pro-exp-0827": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-exp-1206": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+} as const satisfies Record<string, ModelInfo>
 
-// Build the dynamic options union from the map, intersected with CommonFetchParams
-// so extra fields are always allowed while required ones are enforced.
-export type GetModelsOptions = {
-	[P in keyof typeof dynamicProviderExtras]: ({ provider: P } & (typeof dynamicProviderExtras)[P]) & CommonFetchParams
-}[RouterName]
+// OpenAI Native
+// https://openai.com/api/pricing/
+export type OpenAiNativeModelId = keyof typeof openAiNativeModels
+export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-5.5"
+export const openAiNativeModels = {
+	"gpt-5.5": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 5,
+		outputPrice: 30,
+		cacheWritesPrice: 5,
+		cacheReadsPrice: 0.5,
+		reasoningEffort: "medium",
+	},
+	"gpt-5.5-pro": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 30,
+		outputPrice: 180,
+		reasoningEffort: "xhigh",
+	},
+	"gpt-5.4": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2.5,
+		outputPrice: 15,
+		cacheWritesPrice: 2.5,
+		cacheReadsPrice: 0.25,
+		reasoningEffort: "medium",
+	},
+	"gpt-5.4-pro": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 30,
+		outputPrice: 180,
+		reasoningEffort: "xhigh",
+	},
+	"gpt-5.4-mini": {
+		maxTokens: 128_000,
+		contextWindow: 400_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.75,
+		outputPrice: 4.5,
+		cacheWritesPrice: 0.75,
+		cacheReadsPrice: 0.075,
+		reasoningEffort: "medium",
+	},
+	"gpt-5.4-nano": {
+		maxTokens: 128_000,
+		contextWindow: 400_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.2,
+		outputPrice: 1.25,
+		cacheWritesPrice: 0.2,
+		cacheReadsPrice: 0.02,
+		reasoningEffort: "low",
+	},
+	"gpt-4.1": {
+		maxTokens: 32_768,
+		contextWindow: 1_047_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2,
+		outputPrice: 8,
+		cacheReadsPrice: 0.5,
+	},
+	"gpt-4.1-mini": {
+		maxTokens: 32_768,
+		contextWindow: 1_047_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.4,
+		outputPrice: 1.6,
+		cacheReadsPrice: 0.1,
+	},
+	"gpt-4.1-nano": {
+		maxTokens: 32_768,
+		contextWindow: 1_047_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.1,
+		outputPrice: 0.4,
+		cacheReadsPrice: 0.025,
+	},
+	o3: {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0,
+		outputPrice: 40.0,
+		cacheReadsPrice: 2.5,
+		reasoningEffort: "medium",
+	},
+	"o3-high": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0,
+		outputPrice: 40.0,
+		cacheReadsPrice: 2.5,
+		reasoningEffort: "high",
+	},
+	"o3-low": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0,
+		outputPrice: 40.0,
+		cacheReadsPrice: 2.5,
+		reasoningEffort: "low",
+	},
+	"o4-mini": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.275,
+		reasoningEffort: "medium",
+	},
+	"o4-mini-high": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.275,
+		reasoningEffort: "high",
+	},
+	"o4-mini-low": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.275,
+		reasoningEffort: "low",
+	},
+	"o3-mini": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.55,
+		reasoningEffort: "medium",
+	},
+	"o3-mini-high": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.55,
+		reasoningEffort: "high",
+	},
+	"o3-mini-low": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.55,
+		reasoningEffort: "low",
+	},
+	o1: {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 15,
+		outputPrice: 60,
+		cacheReadsPrice: 7.5,
+	},
+	"o1-preview": {
+		maxTokens: 32_768,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 15,
+		outputPrice: 60,
+		cacheReadsPrice: 7.5,
+	},
+	"o1-mini": {
+		maxTokens: 65_536,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		cacheReadsPrice: 0.55,
+	},
+	"gpt-4.5-preview": {
+		maxTokens: 16_384,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 75,
+		outputPrice: 150,
+		cacheReadsPrice: 37.5,
+	},
+	"gpt-4o": {
+		maxTokens: 16_384,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2.5,
+		outputPrice: 10,
+		cacheReadsPrice: 1.25,
+	},
+	"gpt-4o-mini": {
+		maxTokens: 16_384,
+		contextWindow: 128_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+		cacheReadsPrice: 0.075,
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// DeepSeek
+// https://platform.deepseek.com/docs/api
+export type DeepSeekModelId = keyof typeof deepSeekModels
+export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-v4-flash"
+export const deepSeekModels = {
+	"deepseek-v4-flash": {
+		maxTokens: 384_000,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.14,
+		outputPrice: 0.28,
+		cacheWritesPrice: 0.14,
+		cacheReadsPrice: 0.0028,
+		description: `DeepSeek-V4-Flash is the current fast model. It supports both non-thinking and thinking modes.`,
+	},
+	"deepseek-v4-pro": {
+		maxTokens: 384_000,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.435,
+		outputPrice: 0.87,
+		cacheWritesPrice: 0.435,
+		cacheReadsPrice: 0.003625,
+		description: `DeepSeek-V4-Pro is the current higher-capability model for complex reasoning and coding tasks.`,
+	},
+	"deepseek-chat": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.014, // $0.014 per million tokens
+		outputPrice: 0.28, // $0.28 per million tokens
+		cacheWritesPrice: 0.27, // $0.27 per million tokens (cache miss)
+		cacheReadsPrice: 0.07, // $0.07 per million tokens (cache hit)
+		description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
+	},
+	"deepseek-reasoner": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.55, // $0.55 per million tokens (cache miss)
+		outputPrice: 2.19, // $2.19 per million tokens
+		cacheWritesPrice: 0.55, // $0.55 per million tokens (cache miss)
+		cacheReadsPrice: 0.14, // $0.14 per million tokens (cache hit)
+		description: `DeepSeek-R1 achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks. Supports Chain of Thought reasoning with up to 32K tokens.`,
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// Azure OpenAI
+// https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation
+// https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#api-specs
+export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
+
+// Mistral
+// https://docs.mistral.ai/getting-started/models/models_overview/
+export type MistralModelId = keyof typeof mistralModels
+export const mistralDefaultModelId: MistralModelId = "codestral-latest"
+export const mistralModels = {
+	"mistral-medium-3-5": {
+		maxTokens: 256_000,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.5,
+		outputPrice: 7.5,
+	},
+	"mistral-small-2603": {
+		maxTokens: 256_000,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+	},
+	"mistral-large-2512": {
+		maxTokens: 256_000,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.5,
+		outputPrice: 1.5,
+	},
+	"codestral-latest": {
+		maxTokens: 128_000,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.3,
+		outputPrice: 0.9,
+	},
+	"mistral-large-latest": {
+		maxTokens: 131_000,
+		contextWindow: 131_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 6.0,
+	},
+	"ministral-8b-latest": {
+		maxTokens: 131_000,
+		contextWindow: 131_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.1,
+		outputPrice: 0.1,
+	},
+	"ministral-3b-latest": {
+		maxTokens: 131_000,
+		contextWindow: 131_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.04,
+		outputPrice: 0.04,
+	},
+	"mistral-small-latest": {
+		maxTokens: 32_000,
+		contextWindow: 32_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.2,
+		outputPrice: 0.6,
+	},
+	"pixtral-large-latest": {
+		maxTokens: 131_000,
+		contextWindow: 131_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 6.0,
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// Unbound Security
+// https://www.unboundsecurity.ai/ai-gateway
+export const unboundDefaultModelId = "anthropic/claude-3-7-sonnet-20250219"
+export const unboundDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+}
+
+// xAI
+// https://docs.x.ai/developers/models
+export type XAIModelId = keyof typeof xaiModels
+export const xaiDefaultModelId: XAIModelId = "grok-4.3"
+export const xaiModels = {
+	"grok-4.3": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.25,
+		outputPrice: 2.5,
+		description: "xAI's current flagship chat model with configurable reasoning and a 1M context window.",
+	},
+	"grok-build-0.1": {
+		maxTokens: 8192,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 1.0,
+		outputPrice: 2.0,
+		description: "xAI's current fast coding model for agentic coding workflows.",
+	},
+	"grok-3-beta": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		description: "xAI's legacy Grok-3 beta alias.",
+	},
+	"grok-3-fast-beta": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 5.0,
+		outputPrice: 25.0,
+		description: "xAI's legacy Grok-3 fast beta alias.",
+	},
+	"grok-3-mini-beta": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.3,
+		outputPrice: 0.5,
+		description: "xAI's legacy Grok-3 mini beta alias.",
+	},
+	"grok-3-mini-fast-beta": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.6,
+		outputPrice: 4.0,
+		description: "xAI's legacy Grok-3 mini fast beta alias.",
+	},
+	"grok-2-latest": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 latest alias.",
+	},
+	"grok-2": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 alias.",
+	},
+	"grok-2-1212": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 1212 alias.",
+	},
+	"grok-2-vision-latest": {
+		maxTokens: 8192,
+		contextWindow: 32768,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 Vision latest alias.",
+	},
+	"grok-2-vision": {
+		maxTokens: 8192,
+		contextWindow: 32768,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 Vision alias.",
+	},
+	"grok-2-vision-1212": {
+		maxTokens: 8192,
+		contextWindow: 32768,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		description: "xAI's legacy Grok-2 Vision 1212 alias.",
+	},
+	"grok-vision-beta": {
+		maxTokens: 8192,
+		contextWindow: 8192,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 5.0,
+		outputPrice: 15.0,
+		description: "xAI's legacy Grok Vision beta alias.",
+	},
+	"grok-beta": {
+		maxTokens: 8192,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 5.0,
+		outputPrice: 15.0,
+		description: "xAI's legacy Grok beta alias.",
+	},
+} as const satisfies Record<string, ModelInfo>
+
+export type VscodeLlmModelId = keyof typeof vscodeLlmModels
+export const vscodeLlmDefaultModelId: VscodeLlmModelId = "claude-3.5-sonnet"
+export const vscodeLlmModels = {
+	"gpt-3.5-turbo": {
+		contextWindow: 12114,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-3.5-turbo",
+		version: "gpt-3.5-turbo-0613",
+		name: "GPT 3.5 Turbo",
+		supportsToolCalling: true,
+		maxInputTokens: 12114,
+	},
+	"gpt-4o-mini": {
+		contextWindow: 12115,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-4o-mini",
+		version: "gpt-4o-mini-2024-07-18",
+		name: "GPT-4o mini",
+		supportsToolCalling: true,
+		maxInputTokens: 12115,
+	},
+	"gpt-4": {
+		contextWindow: 28501,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-4",
+		version: "gpt-4-0613",
+		name: "GPT 4",
+		supportsToolCalling: true,
+		maxInputTokens: 28501,
+	},
+	"gpt-4-0125-preview": {
+		contextWindow: 63826,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-4-turbo",
+		version: "gpt-4-0125-preview",
+		name: "GPT 4 Turbo",
+		supportsToolCalling: true,
+		maxInputTokens: 63826,
+	},
+	"gpt-4o": {
+		contextWindow: 63827,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-4o",
+		version: "gpt-4o-2024-11-20",
+		name: "GPT-4o",
+		supportsToolCalling: true,
+		maxInputTokens: 63827,
+	},
+	o1: {
+		contextWindow: 19827,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "o1-ga",
+		version: "o1-2024-12-17",
+		name: "o1 (Preview)",
+		supportsToolCalling: true,
+		maxInputTokens: 19827,
+	},
+	"o3-mini": {
+		contextWindow: 63827,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "o3-mini",
+		version: "o3-mini-2025-01-31",
+		name: "o3-mini",
+		supportsToolCalling: true,
+		maxInputTokens: 63827,
+	},
+	"claude-3.5-sonnet": {
+		contextWindow: 81638,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "claude-3.5-sonnet",
+		version: "claude-3.5-sonnet",
+		name: "Claude 3.5 Sonnet",
+		supportsToolCalling: true,
+		maxInputTokens: 81638,
+	},
+	"claude-3.7-sonnet": {
+		contextWindow: 89827,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "claude-3.7-sonnet",
+		version: "claude-3.7-sonnet",
+		name: "Claude 3.7 Sonnet",
+		supportsToolCalling: true,
+		maxInputTokens: 89827,
+	},
+	"claude-3.7-sonnet-thought": {
+		contextWindow: 89827,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "claude-3.7-sonnet-thought",
+		version: "claude-3.7-sonnet-thought",
+		name: "Claude 3.7 Sonnet Thinking",
+		supportsToolCalling: false,
+		maxInputTokens: 89827,
+		thinking: true,
+	},
+	"gemini-2.0-flash-001": {
+		contextWindow: 127827,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gemini-2.0-flash",
+		version: "gemini-2.0-flash-001",
+		name: "Gemini 2.0 Flash",
+		supportsToolCalling: false,
+		maxInputTokens: 127827,
+	},
+	"gemini-2.5-pro": {
+		contextWindow: 63830,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gemini-2.5-pro",
+		version: "gemini-2.5-pro-preview-03-25",
+		name: "Gemini 2.5 Pro (Preview)",
+		supportsToolCalling: true,
+		maxInputTokens: 63830,
+	},
+	"o4-mini": {
+		contextWindow: 111446,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "o4-mini",
+		version: "o4-mini-2025-04-16",
+		name: "o4-mini (Preview)",
+		supportsToolCalling: true,
+		maxInputTokens: 111446,
+	},
+	"gpt-4.1": {
+		contextWindow: 111446,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		family: "gpt-4.1",
+		version: "gpt-4.1-2025-04-14",
+		name: "GPT-4.1 (Preview)",
+		supportsToolCalling: true,
+		maxInputTokens: 111446,
+	},
+} as const satisfies Record<
+	string,
+	ModelInfo & {
+		family: string
+		version: string
+		name: string
+		supportsToolCalling: boolean
+		maxInputTokens: number
+	}
+>
+
+/**
+ * Constants
+ */
+
+// These models support reasoning efforts.
+export const REASONING_MODELS = new Set([
+	"grok-4.3",
+	"x-ai/grok-3-mini-beta",
+	"grok-3-mini-beta",
+	"grok-3-mini-fast-beta",
+])
+
+// These models support prompt caching.
+export const PROMPT_CACHING_MODELS = new Set([
+	"anthropic/claude-3-haiku",
+	"anthropic/claude-3-haiku:beta",
+	"anthropic/claude-3-opus",
+	"anthropic/claude-3-opus:beta",
+	"anthropic/claude-3-sonnet",
+	"anthropic/claude-3-sonnet:beta",
+	"anthropic/claude-3.5-haiku",
+	"anthropic/claude-3.5-haiku-20241022",
+	"anthropic/claude-3.5-haiku-20241022:beta",
+	"anthropic/claude-3.5-haiku:beta",
+	"anthropic/claude-3.5-sonnet",
+	"anthropic/claude-3.5-sonnet-20240620",
+	"anthropic/claude-3.5-sonnet-20240620:beta",
+	"anthropic/claude-3.5-sonnet:beta",
+	"anthropic/claude-3.7-sonnet",
+	"anthropic/claude-3.7-sonnet:beta",
+	"anthropic/claude-3.7-sonnet:thinking",
+	"google/gemini-2.5-pro-preview-03-25",
+	"google/gemini-2.0-flash-001",
+	"google/gemini-flash-1.5",
+	"google/gemini-flash-1.5-8b",
+])
+
+// These models don't have prompt caching enabled by default (you can turn it on
+// in settings).
+export const OPTIONAL_PROMPT_CACHING_MODELS = new Set([
+	"google/gemini-2.5-pro-preview-03-25",
+	"google/gemini-2.0-flash-001",
+	"google/gemini-flash-1.5",
+	"google/gemini-flash-1.5-8b",
+])
+
+// https://www.anthropic.com/news/3-5-models-and-computer-use
+export const COMPUTER_USE_MODELS = new Set([
+	"anthropic/claude-3.5-sonnet",
+	"anthropic/claude-3.5-sonnet:beta",
+	"anthropic/claude-3.7-sonnet",
+	"anthropic/claude-3.7-sonnet:beta",
+	"anthropic/claude-3.7-sonnet:thinking",
+])
+
+const routerNames = ["openrouter", "requesty", "glama", "unbound"] as const
+
+export type RouterName = (typeof routerNames)[number]
+
+export const isRouterName = (value: string): value is RouterName => routerNames.includes(value as RouterName)
+
+export type ModelRecord = Record<string, ModelInfo>
+
+export type RouterModels = Record<RouterName, ModelRecord>

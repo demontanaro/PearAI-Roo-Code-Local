@@ -1,9 +1,7 @@
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	uiMessages: "ui_messages.json",
-	mcpSettings: "mcp_settings.json",
-	customModes: "custom_modes.yaml",
+	mcpSettings: "pearai_agent_mcp_settings.json",
+	customModes: "custom_modes.json",
 	taskMetadata: "task_metadata.json",
-	historyItem: "history_item.json",
-	historyIndex: "_index.json",
 }

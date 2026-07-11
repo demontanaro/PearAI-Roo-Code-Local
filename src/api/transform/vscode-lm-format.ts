@@ -18,7 +18,7 @@ function asObjectSafe(value: any): object {
 
 		// Handle pre-existing objects
 		if (typeof value === "object") {
-			return { ...value }
+			return Object.assign({}, value)
 		}
 
 		return {}
@@ -114,18 +114,9 @@ export function convertToVsCodeLmMessages(
 					{ nonToolMessages: [], toolMessages: [] },
 				)
 
-				// Process non-tool messages first, then tool messages
-				// Tool calls must come at the end so they are properly followed by user message with tool results
+				// Process tool messages first then non-tool messages
 				const contentParts = [
-					// Convert non-tool messages to TextParts first
-					...nonToolMessages.map((part) => {
-						if (part.type === "image") {
-							return new vscode.LanguageModelTextPart("[Image generation not supported by VSCode LM API]")
-						}
-						return new vscode.LanguageModelTextPart(part.text)
-					}),
-
-					// Convert tool messages to ToolCallParts after text
+					// Convert tool messages to ToolCallParts first
 					...toolMessages.map(
 						(toolMessage) =>
 							new vscode.LanguageModelToolCallPart(
@@ -134,6 +125,14 @@ export function convertToVsCodeLmMessages(
 								asObjectSafe(toolMessage.input),
 							),
 					),
+
+					// Convert non-tool messages to TextParts after tool messages
+					...nonToolMessages.map((part) => {
+						if (part.type === "image") {
+							return new vscode.LanguageModelTextPart("[Image generation not supported by VSCode LM API]")
+						}
+						return new vscode.LanguageModelTextPart(part.text)
+					}),
 				]
 
 				// Add the assistant message to the list of messages
@@ -155,42 +154,4 @@ export function convertToAnthropicRole(vsCodeLmMessageRole: vscode.LanguageModel
 		default:
 			return null
 	}
-}
-
-/**
- * Extracts the text content from a VS Code Language Model chat message.
- * @param message A VS Code Language Model chat message.
- * @returns The extracted text content.
- */
-export function extractTextCountFromMessage(message: vscode.LanguageModelChatMessage): string {
-	let text = ""
-	if (Array.isArray(message.content)) {
-		for (const item of message.content) {
-			if (item instanceof vscode.LanguageModelTextPart) {
-				text += item.value
-			}
-			if (item instanceof vscode.LanguageModelToolResultPart) {
-				text += item.callId
-				for (const part of item.content) {
-					if (part instanceof vscode.LanguageModelTextPart) {
-						text += part.value
-					}
-				}
-			}
-			if (item instanceof vscode.LanguageModelToolCallPart) {
-				text += item.name
-				text += item.callId
-				if (item.input && Object.keys(item.input).length > 0) {
-					try {
-						text += JSON.stringify(item.input)
-					} catch (error) {
-						console.error("Roo Code <Language Model API>: Failed to stringify tool call input:", error)
-					}
-				}
-			}
-		}
-	} else if (typeof message.content === "string") {
-		text += message.content
-	}
-	return text
 }

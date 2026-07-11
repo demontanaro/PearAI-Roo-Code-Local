@@ -3,7 +3,8 @@ import * as path from "path"
 
 import { listFiles } from "../../services/glob/list-files"
 import { ClineProvider } from "../../core/webview/ClineProvider"
-import { toRelativePath, getWorkspacePath } from "../../utils/path"
+import { toRelativePath } from "../../utils/path"
+import { getWorkspacePath } from "../../utils/path"
 
 const MAX_INITIAL_FILES = 1_000
 
@@ -17,7 +18,7 @@ class WorkspaceTracker {
 	private resetTimer: NodeJS.Timeout | null = null
 
 	get cwd() {
-		return this.providerRef?.deref()?.cwd ?? getWorkspacePath()
+		return getWorkspacePath()
 	}
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
@@ -168,7 +169,6 @@ class WorkspaceTracker {
 			this.resetTimer = null
 		}
 		this.disposables.forEach((d) => d.dispose())
-		this.disposables = [] // Clear the array
 	}
 }
 

@@ -1,7 +1,6 @@
 import path from "path"
 import { fileExistsAtPath } from "../../utils/fs"
 import fs from "fs/promises"
-import fsSync from "fs"
 import ignore, { Ignore } from "ignore"
 import * as vscode from "vscode"
 import { AGENT_IGNORE_FILE_NAME } from "../../shared/constants"
@@ -82,7 +81,6 @@ export class RooIgnoreController {
 
 	/**
 	 * Check if a file should be accessible to the LLM
-	 * Automatically resolves symlinks
 	 * @param filePath - Path to check (relative to cwd)
 	 * @returns true if file is accessible, false if ignored
 	 */
@@ -92,25 +90,15 @@ export class RooIgnoreController {
 			return true
 		}
 		try {
+			// Normalize path to be relative to cwd and use forward slashes
 			const absolutePath = path.resolve(this.cwd, filePath)
+			const relativePath = path.relative(this.cwd, absolutePath).toPosix()
 
-			// Follow symlinks to get the real path
-			let realPath: string
-			try {
-				realPath = fsSync.realpathSync(absolutePath)
-			} catch {
-				// If realpath fails (file doesn't exist, broken symlink, etc.),
-				// use the original path
-				realPath = absolutePath
-			}
-
-			// Convert real path to relative for .rooignore checking
-			const relativePath = path.relative(this.cwd, realPath).toPosix()
-
-			// Check if the real path is ignored
+			// Ignore expects paths to be path.relative()'d
 			return !this.ignoreInstance.ignores(relativePath)
 		} catch (error) {
-			// Allow access to files outside cwd or on errors (backward compatibility)
+			// console.error(`Error validating access for ${filePath}:`, error)
+			// Ignore is designed to work with relative file paths, so will throw error for paths outside cwd. We are allowing access to all files outside cwd.
 			return true
 		}
 	}

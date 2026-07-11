@@ -1,35 +1,29 @@
 {
 	"title": "Server MCP",
 	"done": "Fatto",
-	"description": "Il <0>Model Context Protocol</0> permette la comunicazione con server MCP in esecuzione locale che forniscono strumenti e risorse aggiuntive per estendere le capacità di Roo. Puoi utilizzare <1>server creati dalla comunità</1> o chiedere a Roo di creare nuovi strumenti specifici per il tuo flusso di lavoro (ad esempio, \"aggiungi uno strumento che ottiene la documentazione npm più recente\").",
-	"instructions": "Istruzioni",
+	"description": "Il <0>Model Context Protocol</0> permette la comunicazione con server MCP in esecuzione locale che forniscono strumenti e risorse aggiuntive per estendere le capacità di Roo. Puoi utilizzare <1>server creati dalla comunità</1> o chiedere a Agent di creare nuovi strumenti specifici per il tuo flusso di lavoro (ad esempio, \"aggiungi uno strumento che ottiene la documentazione npm più recente\").",
 	"enableToggle": {
 		"title": "Abilita server MCP",
-		"description": "Attiva questa opzione per permettere a Roo di usare strumenti dai server MCP collegati. Questo dà a Roo più capacità. Se non vuoi usare questi strumenti extra, disattiva per ridurre i costi dei token API."
+		"description": "Quando abilitato, Agent sarà in grado di interagire con i server MCP per funzionalità avanzate. Se non stai utilizzando MCP, puoi disabilitare questa opzione per ridurre l'utilizzo di token da parte di Roo."
 	},
 	"enableServerCreation": {
 		"title": "Abilita creazione server MCP",
-		"description": "Abilita questa opzione per farti aiutare da Roo a creare <1>nuovi</1> server MCP personalizzati. <0>Scopri di più sulla creazione di server</0>",
-		"hint": "Suggerimento: Per ridurre i costi dei token API, disattiva questa impostazione quando non chiedi a Roo di creare un nuovo server MCP."
+		"description": "Quando abilitato, Agent può aiutarti a creare nuovi server MCP tramite comandi come \"aggiungi un nuovo strumento per...\". Se non hai bisogno di creare server MCP, puoi disabilitare questa opzione per ridurre l'utilizzo di token da parte di Roo."
 	},
-	"editGlobalMCP": "Modifica MCP globale",
-	"editProjectMCP": "Modifica MCP del progetto",
-	"learnMoreEditingSettings": "Scopri di più sulla modifica dei file di configurazione MCP",
+	"editGlobalMCP": "Modifica MCP Globale",
+	"editProjectMCP": "Modifica MCP del Progetto",
 	"tool": {
 		"alwaysAllow": "Consenti sempre",
 		"parameters": "Parametri",
-		"noDescription": "Nessuna descrizione",
-		"togglePromptInclusion": "Attiva/disattiva inclusione nel prompt"
+		"noDescription": "Nessuna descrizione"
 	},
 	"tabs": {
 		"tools": "Strumenti",
-		"resources": "Risorse",
-		"logs": "Registri"
+		"resources": "Risorse"
 	},
 	"emptyState": {
 		"noTools": "Nessuno strumento trovato",
-		"noResources": "Nessuna risorsa trovata",
-		"noLogs": "Ancora nessun registro"
+		"noResources": "Nessuna risorsa trovata"
 	},
 	"networkTimeout": {
 		"label": "Timeout di rete",
@@ -52,13 +46,7 @@
 		"delete": "Elimina"
 	},
 	"serverStatus": {
-		"retrying": "Riprovo...",
+		"retrying": "Nuovo tentativo...",
 		"retryConnection": "Riprova connessione"
-	},
-	"refreshMCP": "Aggiorna server MCP",
-	"execution": {
-		"running": "In esecuzione",
-		"completed": "Completato",
-		"error": "Errore"
 	}
 }

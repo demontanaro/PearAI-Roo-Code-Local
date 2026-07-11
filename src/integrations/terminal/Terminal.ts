@@ -152,8 +152,7 @@ export class Terminal extends BaseTerminal {
 
 	public static getEnv(): Record<string, string> {
 		const env: Record<string, string> = {
-			ROO_ACTIVE: "true",
-			PAGER: process.platform === "win32" ? "" : "cat",
+			PAGER: "cat",
 
 			// VTE must be disabled because it prevents the prompt command from executing
 			// See https://wiki.gnome.org/Apps/Terminal/VTE

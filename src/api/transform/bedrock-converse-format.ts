@@ -1,31 +1,10 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ConversationRole, Message, ContentBlock } from "@aws-sdk/client-bedrock-runtime"
-import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
-interface BedrockMessageContent {
-	type: "text" | "image" | "video" | "tool_use" | "tool_result"
-	text?: string
-	source?: {
-		type: "base64"
-		data: string | Uint8Array // string for Anthropic, Uint8Array for Bedrock
-		media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"
-	}
-	// Video specific fields
-	format?: string
-	s3Location?: {
-		uri: string
-		bucketOwner?: string
-	}
-	// Tool use and result fields
-	toolUseId?: string
-	name?: string
-	input?: any
-	output?: any // Used for tool_result type
-}
+import { MessageContent } from "../../shared/api"
 
 /**
  * Convert Anthropic messages to Bedrock Converse format
- * @param anthropicMessages Messages in Anthropic format
  */
 export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Messages.MessageParam[]): Message[] {
 	return anthropicMessages.map((anthropicMessage) => {
@@ -45,10 +24,10 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 
 		// Process complex content types
 		const content = anthropicMessage.content.map((block) => {
-			const messageBlock = block as BedrockMessageContent & {
+			const messageBlock = block as MessageContent & {
 				id?: string
 				tool_use_id?: string
-				content?: string | Array<{ type: string; text: string }>
+				content?: Array<{ type: string; text: string }>
 				output?: string | Array<{ type: string; text: string }>
 			}
 
@@ -88,52 +67,39 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 			}
 
 			if (messageBlock.type === "tool_use") {
-				// Native-only: keep input as JSON object for Bedrock's toolUse format
+				// Convert tool use to XML format
+				const toolParams = Object.entries(messageBlock.input || {})
+					.map(([key, value]) => `<${key}>\n${value}\n</${key}>`)
+					.join("\n")
+
 				return {
 					toolUse: {
-						toolUseId: sanitizeOpenAiCallId(messageBlock.id || ""),
+						toolUseId: messageBlock.id || "",
 						name: messageBlock.name || "",
-						input: messageBlock.input || {},
+						input: `<${messageBlock.name}>\n${toolParams}\n</${messageBlock.name}>`,
 					},
 				} as ContentBlock
 			}
 
 			if (messageBlock.type === "tool_result") {
-				// Handle content field - can be string or array (native tool format)
-				if (messageBlock.content) {
-					// Content is a string
-					if (typeof messageBlock.content === "string") {
-						return {
-							toolResult: {
-								toolUseId: sanitizeOpenAiCallId(messageBlock.tool_use_id || ""),
-								content: [
-									{
-										text: messageBlock.content,
-									},
-								],
-								status: "success",
-							},
-						} as ContentBlock
-					}
-					// Content is an array of content blocks
-					if (Array.isArray(messageBlock.content)) {
-						return {
-							toolResult: {
-								toolUseId: sanitizeOpenAiCallId(messageBlock.tool_use_id || ""),
-								content: messageBlock.content.map((item) => ({
-									text: typeof item === "string" ? item : item.text || String(item),
-								})),
-								status: "success",
-							},
-						} as ContentBlock
-					}
+				// First try to use content if available
+				if (messageBlock.content && Array.isArray(messageBlock.content)) {
+					return {
+						toolResult: {
+							toolUseId: messageBlock.tool_use_id || "",
+							content: messageBlock.content.map((item) => ({
+								text: item.text,
+							})),
+							status: "success",
+						},
+					} as ContentBlock
 				}
 
 				// Fall back to output handling if content is not available
 				if (messageBlock.output && typeof messageBlock.output === "string") {
 					return {
 						toolResult: {
-							toolUseId: sanitizeOpenAiCallId(messageBlock.tool_use_id || ""),
+							toolUseId: messageBlock.tool_use_id || "",
 							content: [
 								{
 									text: messageBlock.output,
@@ -147,7 +113,7 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 				if (Array.isArray(messageBlock.output)) {
 					return {
 						toolResult: {
-							toolUseId: sanitizeOpenAiCallId(messageBlock.tool_use_id || ""),
+							toolUseId: messageBlock.tool_use_id || "",
 							content: messageBlock.output.map((part) => {
 								if (typeof part === "object" && "text" in part) {
 									return { text: part.text }
@@ -166,7 +132,7 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 				// Default case
 				return {
 					toolResult: {
-						toolUseId: sanitizeOpenAiCallId(messageBlock.tool_use_id || ""),
+						toolUseId: messageBlock.tool_use_id || "",
 						content: [
 							{
 								text: String(messageBlock.output || ""),

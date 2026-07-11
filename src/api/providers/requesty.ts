@@ -1,23 +1,11 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { type ModelInfo, type ModelRecord, requestyDefaultModelId, requestyDefaultModelInfo } from "@roo-code/types"
-
-import type { ApiHandlerOptions } from "../../shared/api"
-import { calculateApiCostOpenAI } from "../../shared/cost"
-
-import { convertToOpenAiMessages } from "../transform/openai-format"
+import { ModelInfo, ModelRecord, requestyDefaultModelId, requestyDefaultModelInfo } from "../../shared/api"
+import { calculateApiCostOpenAI } from "../../utils/cost"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
-import { getModelParams } from "../transform/model-params"
-import { AnthropicReasoningParams } from "../transform/reasoning"
-
-import { DEFAULT_HEADERS } from "./constants"
-import { getModels } from "./fetchers/modelCache"
-import { BaseProvider } from "./base-provider"
-import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { toRequestyServiceUrl } from "../../shared/utils/requesty"
-import { handleOpenAIError } from "./utils/openai-error-handler"
-import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
+import { OpenAiHandler, OpenAiHandlerOptions } from "./openai"
+import { getModels } from "./fetchers/cache"
 
 // Requesty usage includes an extra field for Anthropic use cases.
 // Safely cast the prompt token details section to the appropriate structure.
@@ -29,81 +17,42 @@ interface RequestyUsage extends OpenAI.CompletionUsage {
 	total_cost?: number
 }
 
-type RequestyChatCompletionParamsStreaming = OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & {
-	requesty?: {
-		trace_id?: string
-		extra?: {
-			mode?: string
-		}
-	}
-	thinking?: AnthropicReasoningParams
-}
-
-type RequestyChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
-	requesty?: {
-		trace_id?: string
-		extra?: {
-			mode?: string
-		}
-	}
-	thinking?: AnthropicReasoningParams
-}
-
-export class RequestyHandler extends BaseProvider implements SingleCompletionHandler {
-	protected options: ApiHandlerOptions
+export class RequestyHandler extends OpenAiHandler {
 	protected models: ModelRecord = {}
-	private client: OpenAI
-	private baseURL: string
-	private readonly providerName = "Requesty"
 
-	constructor(options: ApiHandlerOptions) {
-		super()
+	constructor(options: OpenAiHandlerOptions) {
+		if (!options.requestyApiKey) {
+			throw new Error("Requesty API key is required. Please provide it in the settings.")
+		}
 
-		this.options = options
-		this.baseURL = toRequestyServiceUrl(options.requestyBaseUrl)
-
-		const apiKey = this.options.requestyApiKey ?? "not-provided"
-
-		this.client = new OpenAI({
-			baseURL: this.baseURL,
-			apiKey: apiKey,
-			defaultHeaders: DEFAULT_HEADERS,
+		super({
+			...options,
+			openAiApiKey: options.requestyApiKey,
+			openAiModelId: options.requestyModelId ?? requestyDefaultModelId,
+			openAiBaseUrl: "https://router.requesty.ai/v1",
 		})
 	}
 
-	public async fetchModel() {
-		this.models = await getModels({ provider: "requesty", baseUrl: this.baseURL })
-		return this.getModel()
+	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		this.models = await getModels("requesty")
+		yield* super.createMessage(systemPrompt, messages)
 	}
 
-	override getModel() {
+	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.options.requestyModelId ?? requestyDefaultModelId
-		const cachedInfo = this.models[id] ?? requestyDefaultModelInfo
-		let info: ModelInfo = cachedInfo
-
-		// Apply tool preferences for models accessed through routers (OpenAI, Gemini)
-		info = applyRouterToolPreferences(id, info)
-
-		const params = getModelParams({
-			format: "anthropic",
-			modelId: id,
-			model: info,
-			settings: this.options,
-			defaultTemperature: 0,
-		})
-
-		return { id, info, ...params }
+		const info = this.models[id] ?? requestyDefaultModelInfo
+		return { id, info }
 	}
 
-	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
+	protected override processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
 		const requestyUsage = usage as RequestyUsage
 		const inputTokens = requestyUsage?.prompt_tokens || 0
 		const outputTokens = requestyUsage?.completion_tokens || 0
 		const cacheWriteTokens = requestyUsage?.prompt_tokens_details?.caching_tokens || 0
 		const cacheReadTokens = requestyUsage?.prompt_tokens_details?.cached_tokens || 0
-		const { totalCost } = modelInfo
+		const totalCost = modelInfo
 			? calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
-			: { totalCost: 0 }
+			: 0
 
 		return {
 			type: "usage",
@@ -115,105 +64,8 @@ export class RequestyHandler extends BaseProvider implements SingleCompletionHan
 		}
 	}
 
-	override async *createMessage(
-		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-	): ApiStream {
-		const {
-			id: model,
-			info,
-			maxTokens: max_tokens,
-			temperature,
-			reasoningEffort: reasoning_effort,
-			reasoning: thinking,
-		} = await this.fetchModel()
-
-		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-			{ role: "system", content: systemPrompt },
-			...convertToOpenAiMessages(messages),
-		]
-
-		// Map extended efforts to OpenAI Chat Completions-accepted values (omit unsupported)
-		const allowedEffort = (["low", "medium", "high"] as const).includes(reasoning_effort as any)
-			? (reasoning_effort as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming["reasoning_effort"])
-			: undefined
-
-		const completionParams: RequestyChatCompletionParamsStreaming = {
-			messages: openAiMessages,
-			model,
-			max_tokens,
-			temperature,
-			...(allowedEffort && { reasoning_effort: allowedEffort }),
-			...(thinking && { thinking }),
-			stream: true,
-			stream_options: { include_usage: true },
-			requesty: { trace_id: metadata?.taskId, extra: { mode: metadata?.mode } },
-			tools: this.convertToolsForOpenAI(metadata?.tools),
-			tool_choice: metadata?.tool_choice,
-		}
-
-		let stream
-		try {
-			// With streaming params type, SDK returns an async iterable stream
-			stream = await this.client.chat.completions.create(completionParams)
-		} catch (error) {
-			throw handleOpenAIError(error, this.providerName)
-		}
-		let lastUsage: any = undefined
-
-		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
-
-			if (delta?.content) {
-				yield { type: "text", text: delta.content }
-			}
-
-			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
-				yield { type: "reasoning", text: (delta.reasoning_content as string | undefined) || "" }
-			}
-
-			// Handle native tool calls
-			if (delta && "tool_calls" in delta && Array.isArray(delta.tool_calls)) {
-				for (const toolCall of delta.tool_calls) {
-					yield {
-						type: "tool_call_partial",
-						index: toolCall.index,
-						id: toolCall.id,
-						name: toolCall.function?.name,
-						arguments: toolCall.function?.arguments,
-					}
-				}
-			}
-
-			if (chunk.usage) {
-				lastUsage = chunk.usage
-			}
-		}
-
-		if (lastUsage) {
-			yield this.processUsageMetrics(lastUsage, info)
-		}
-	}
-
-	async completePrompt(prompt: string): Promise<string> {
-		const { id: model, maxTokens: max_tokens, temperature } = await this.fetchModel()
-
-		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: "system", content: prompt }]
-
-		const completionParams: RequestyChatCompletionParams = {
-			model,
-			max_tokens,
-			messages: openAiMessages,
-			temperature: temperature,
-		}
-
-		let response: OpenAI.Chat.ChatCompletion
-		try {
-			response = await this.client.chat.completions.create(completionParams)
-		} catch (error) {
-			throw handleOpenAIError(error, this.providerName)
-		}
-		return response.choices[0]?.message.content || ""
+	override async completePrompt(prompt: string): Promise<string> {
+		this.models = await getModels("requesty")
+		return super.completePrompt(prompt)
 	}
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback } from "react"
 
 /**
  * Options for copying text to clipboard
@@ -33,24 +33,15 @@ export const copyToClipboard = async (text: string, options?: CopyOptions): Prom
  */
 export const useCopyToClipboard = (feedbackDuration = 2000) => {
 	const [showCopyFeedback, setShowCopyFeedback] = useState(false)
-	const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
 	const copyWithFeedback = useCallback(
 		async (text: string, e?: React.MouseEvent) => {
 			e?.stopPropagation()
 
-			// Clear any existing timeout
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-			}
-
 			const success = await copyToClipboard(text, {
 				onSuccess: () => {
 					setShowCopyFeedback(true)
-					timeoutRef.current = setTimeout(() => {
-						setShowCopyFeedback(false)
-						timeoutRef.current = null
-					}, feedbackDuration)
+					setTimeout(() => setShowCopyFeedback(false), feedbackDuration)
 				},
 			})
 
@@ -58,15 +49,6 @@ export const useCopyToClipboard = (feedbackDuration = 2000) => {
 		},
 		[feedbackDuration],
 	)
-
-	// Cleanup timeout on unmount
-	useEffect(() => {
-		return () => {
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-			}
-		}
-	}, [])
 
 	return {
 		showCopyFeedback,

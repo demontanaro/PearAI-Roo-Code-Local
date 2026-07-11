@@ -1,158 +1,130 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { type XAIModelId, xaiDefaultModelId, xaiModels } from "@roo-code/types"
-
-import type { ApiHandlerOptions } from "../../shared/api"
-
+import { ApiHandlerOptions, XAIModelId, xaiDefaultModelId, xaiModels, REASONING_MODELS } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
-import { convertToResponsesApiInput } from "../transform/responses-api-input"
-import { processResponsesApiStream, createUsageNormalizer } from "../transform/responses-api-stream"
-import { getModelParams } from "../transform/model-params"
+import { convertToOpenAiMessages } from "../transform/openai-format"
 
+import { SingleCompletionHandler } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
-import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { handleOpenAIError } from "./utils/openai-error-handler"
-import { isMcpTool } from "../../utils/mcp-name"
 
 const XAI_DEFAULT_TEMPERATURE = 0
+
+const toXAIReasoningEffort = (
+	effort?: ApiHandlerOptions["reasoningEffort"],
+): OpenAI.Chat.ChatCompletionReasoningEffort | "none" | undefined => {
+	if (effort === "none") {
+		return "none"
+	}
+
+	if (effort === "low" || effort === "medium" || effort === "high") {
+		return effort
+	}
+
+	if (effort === "xhigh") {
+		return "high"
+	}
+
+	return undefined
+}
 
 export class XAIHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
-	private readonly providerName = "xAI"
 
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
-
-		const apiKey = this.options.xaiApiKey ?? "not-provided"
-
 		this.client = new OpenAI({
 			baseURL: "https://api.x.ai/v1",
-			apiKey: apiKey,
+			apiKey: this.options.xaiApiKey ?? "not-provided",
 			defaultHeaders: DEFAULT_HEADERS,
 		})
 	}
 
 	override getModel() {
+		// Determine which model ID to use (specified or default)
 		const id =
 			this.options.apiModelId && this.options.apiModelId in xaiModels
 				? (this.options.apiModelId as XAIModelId)
 				: xaiDefaultModelId
 
-		const info = xaiModels[id]
-		const params = getModelParams({
-			format: "openai",
-			modelId: id,
-			model: info,
-			settings: this.options,
-			defaultTemperature: XAI_DEFAULT_TEMPERATURE,
-		})
-		return { id, info, ...params }
-	}
+		// Check if reasoning effort applies to this model
+		const supportsReasoning = REASONING_MODELS.has(id)
 
-	/**
-	 * Convert tools from OpenAI Chat Completions format to Responses API format.
-	 * Chat Completions: { type: "function", function: { name, description, parameters } }
-	 * Responses API: { type: "function", name, description, parameters }
-	 *
-	 * Uses base provider's convertToolSchemaForOpenAI() for schema hardening
-	 * (additionalProperties: false, ensureAllRequired) and handles MCP tools.
-	 */
-	private mapResponseTools(tools?: any[]): any[] | undefined {
-		const converted = this.convertToolsForOpenAI(tools)
-		if (!converted?.length) {
-			return undefined
+		return {
+			id,
+			info: xaiModels[id],
+			reasoningEffort: supportsReasoning ? toXAIReasoningEffort(this.options.reasoningEffort) : undefined,
 		}
-		return converted
-			.filter((tool) => tool?.type === "function")
-			.map((tool) => {
-				const isMcp = isMcpTool(tool.function.name)
-				return {
-					type: "function",
-					name: tool.function.name,
-					description: tool.function.description,
-					parameters: isMcp
-						? tool.function.parameters
-						: this.convertToolSchemaForOpenAI(tool.function.parameters),
-					strict: !isMcp,
-				}
-			})
 	}
 
-	override async *createMessage(
-		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-	): ApiStream {
-		const model = this.getModel()
+	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const { id: modelId, info: modelInfo, reasoningEffort } = this.getModel()
 
-		// Convert directly from Anthropic format to Responses API input format
-		const input = convertToResponsesApiInput(messages)
-		const responseTools = this.mapResponseTools(metadata?.tools)
-
-		// Build request options
-		const requestBody: Record<string, any> = {
-			model: model.id,
-			instructions: systemPrompt,
-			input: input,
+		// Use the OpenAI-compatible API.
+		const stream = await this.client.chat.completions.create({
+			model: modelId,
+			max_tokens: modelInfo.maxTokens,
+			temperature: this.options.modelTemperature ?? XAI_DEFAULT_TEMPERATURE,
+			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
-			store: false, // Don't store responses server-side for privacy
-			include: ["reasoning.encrypted_content"],
-		}
+			stream_options: { include_usage: true },
+			...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+		})
 
-		if (model.maxTokens) {
-			requestBody.max_output_tokens = model.maxTokens
-		}
+		for await (const chunk of stream) {
+			const delta = chunk.choices[0]?.delta
 
-		if (model.temperature !== undefined) {
-			requestBody.temperature = model.temperature
-		}
+			if (delta?.content) {
+				yield {
+					type: "text",
+					text: delta.content,
+				}
+			}
 
-		if (responseTools) {
-			requestBody.tools = responseTools
-			// Cast tool_choice since metadata uses Chat Completions types but Responses API has its own type
-			requestBody.tool_choice = (metadata?.tool_choice ?? "auto") as any
-			requestBody.parallel_tool_calls = metadata?.parallelToolCalls ?? true
-		}
+			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
+				yield {
+					type: "reasoning",
+					text: delta.reasoning_content as string,
+				}
+			}
 
-		// Pass reasoning effort for models that support it (e.g., mini models)
-		if (model.reasoning) {
-			requestBody.reasoning = model.reasoning
+			if (chunk.usage) {
+				yield {
+					type: "usage",
+					inputTokens: chunk.usage.prompt_tokens || 0,
+					outputTokens: chunk.usage.completion_tokens || 0,
+					// X.AI might include these fields in the future, handle them if present.
+					cacheReadTokens:
+						"cache_read_input_tokens" in chunk.usage ? (chunk.usage as any).cache_read_input_tokens : 0,
+					cacheWriteTokens:
+						"cache_creation_input_tokens" in chunk.usage
+							? (chunk.usage as any).cache_creation_input_tokens
+							: 0,
+				}
+			}
 		}
-
-		let stream: AsyncIterable<any>
-		try {
-			stream = (await this.client.responses.create({
-				...requestBody,
-				stream: true,
-			} as any)) as unknown as AsyncIterable<any>
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			throw handleOpenAIError(error, this.providerName)
-		}
-
-		const normalizeUsage = createUsageNormalizer()
-		yield* processResponsesApiStream(stream, normalizeUsage)
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
-		const model = this.getModel()
+		const { id: modelId, reasoningEffort } = this.getModel()
 
 		try {
-			const response = await this.client.responses.create({
-				model: model.id,
-				input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }],
-				store: false,
+			const response = await this.client.chat.completions.create({
+				model: modelId,
+				messages: [{ role: "user", content: prompt }],
+				...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
 			})
 
-			// output_text is a convenience field on the Responses API response
-			return response.output_text || ""
+			return response.choices[0]?.message.content || ""
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			throw handleOpenAIError(error, this.providerName)
+			if (error instanceof Error) {
+				throw new Error(`xAI completion error: ${error.message}`)
+			}
+
+			throw error
 		}
 	}
 }

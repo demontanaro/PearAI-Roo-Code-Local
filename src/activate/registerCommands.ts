@@ -1,17 +1,12 @@
 import * as vscode from "vscode"
 import delay from "delay"
 
-import type { CommandId } from "@roo-code/types"
-
-import { Package } from "../shared/package"
-import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { ContextProxy } from "../core/config/ContextProxy"
-import { focusPanel } from "../utils/focusPanel"
+import { telemetryService } from "../services/telemetry/TelemetryService"
+
+import { registerHumanRelayCallback, unregisterHumanRelayCallback, handleHumanRelayResponse } from "./humanRelay"
 import { handleNewTask } from "./handleTask"
-import { CodeIndexManager } from "../services/code-index/manager"
-import { importSettingsWithFeedback } from "../core/config/importExport"
-import { t } from "../i18n"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
@@ -62,114 +57,128 @@ export type RegisterCommandOptions = {
 export const registerCommands = (options: RegisterCommandOptions) => {
 	const { context } = options
 
-	for (const [id, callback] of Object.entries(getCommandsMap(options))) {
-		const command = getCommand(id as CommandId)
+	for (const [command, callback] of Object.entries(getCommandsMap(options))) {
 		context.subscriptions.push(vscode.commands.registerCommand(command, callback))
 	}
 }
 
-const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOptions): Record<CommandId, any> => ({
-	activationCompleted: () => {},
-	plusButtonClicked: async () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOptions) => {
+	return {
+		"roo-cline.activationCompleted": () => {},
+		"roo-cline.plusButtonClicked": async () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
-		if (!visibleProvider) {
-			return
-		}
-
-		await visibleProvider.removeClineFromStack()
-		await visibleProvider.refreshWorkspace()
-		await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
-		// Send focusInput action immediately after chatButtonClicked
-		// This ensures the focus happens after the view has switched
-		await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
-	},
-	popoutButtonClicked: () => {
-		return openClineInNewTab({ context, outputChannel })
-	},
-	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
-	settingsButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
-
-		if (!visibleProvider) {
-			return
-		}
-
-		visibleProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
-		// Also explicitly post the visibility message to trigger scroll reliably
-		visibleProvider.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
-	},
-	historyButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
-
-		if (!visibleProvider) {
-			return
-		}
-
-		visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
-	},
-	newTask: handleNewTask,
-	setCustomStoragePath: async () => {
-		const { promptForCustomStoragePath } = await import("../utils/storage")
-		await promptForCustomStoragePath()
-	},
-	importSettings: async (filePath?: string) => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
-		if (!visibleProvider) {
-			return
-		}
-
-		await importSettingsWithFeedback(
-			{
-				providerSettingsManager: visibleProvider.providerSettingsManager,
-				contextProxy: visibleProvider.contextProxy,
-				customModesManager: visibleProvider.customModesManager,
-				provider: visibleProvider,
-			},
-			filePath,
-		)
-	},
-	focusInput: async () => {
-		try {
-			await focusPanel(tabPanel, sidebarPanel)
-
-			// Send focus input message only for sidebar panels
-			if (sidebarPanel && getPanel() === sidebarPanel) {
-				provider.postMessageToWebview({ type: "action", action: "focusInput" })
+			if (!visibleProvider) {
+				return
 			}
-		} catch (error) {
-			outputChannel.appendLine(`Error focusing input: ${error}`)
-		}
-	},
-	focusPanel: async () => {
-		try {
-			await focusPanel(tabPanel, sidebarPanel)
-		} catch (error) {
-			outputChannel.appendLine(`Error focusing panel: ${error}`)
-		}
-	},
-	acceptInput: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
-		if (!visibleProvider) {
-			return
-		}
+			telemetryService.captureTitleButtonClicked("plus")
 
-		visibleProvider.postMessageToWebview({ type: "acceptInput" })
-	},
-	toggleAutoApprove: async () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+			await visibleProvider.removeClineFromStack()
+			await visibleProvider.postStateToWebview()
+			await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		},
+		"roo-cline.mcpButtonClicked": () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
-		if (!visibleProvider) {
-			return
-		}
+			if (!visibleProvider) {
+				return
+			}
 
-		visibleProvider.postMessageToWebview({
-			type: "action",
-			action: "toggleAutoApprove",
-		})
-	},
-})
+			telemetryService.captureTitleButtonClicked("mcp")
+
+			visibleProvider.postMessageToWebview({ type: "action", action: "mcpButtonClicked" })
+		},
+		"roo-cline.promptsButtonClicked": () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
+
+			if (!visibleProvider) {
+				return
+			}
+
+			telemetryService.captureTitleButtonClicked("prompts")
+
+			visibleProvider.postMessageToWebview({ type: "action", action: "promptsButtonClicked" })
+		},
+		"roo-cline.popoutButtonClicked": () => {
+			telemetryService.captureTitleButtonClicked("popout")
+
+			return openClineInNewTab({ context, outputChannel })
+		},
+		"roo-cline.openInNewTab": () => openClineInNewTab({ context, outputChannel }),
+		"roo-cline.settingsButtonClicked": () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
+
+			if (!visibleProvider) {
+				return
+			}
+
+			telemetryService.captureTitleButtonClicked("settings")
+
+			visibleProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
+		},
+		"roo-cline.historyButtonClicked": () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
+
+			if (!visibleProvider) {
+				return
+			}
+
+			telemetryService.captureTitleButtonClicked("history")
+
+			visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
+		},
+		"roo-cline.helpButtonClicked": () => {
+			telemetryService.captureTitleButtonClicked("help")
+
+			vscode.env.openExternal(vscode.Uri.parse("https://docs.roocode.com"))
+		},
+		"roo-cline.showHumanRelayDialog": (params: { requestId: string; promptText: string }) => {
+			const panel = getPanel()
+
+			if (panel) {
+				panel?.webview.postMessage({
+					type: "showHumanRelayDialog",
+					requestId: params.requestId,
+					promptText: params.promptText,
+				})
+			}
+		},
+		"roo-cline.registerHumanRelayCallback": registerHumanRelayCallback,
+		"roo-cline.unregisterHumanRelayCallback": unregisterHumanRelayCallback,
+		"roo-cline.handleHumanRelayResponse": handleHumanRelayResponse,
+		"roo-cline.newTask": handleNewTask,
+		"roo-cline.setCustomStoragePath": async () => {
+			const { promptForCustomStoragePath } = await import("../shared/storagePathManager")
+			await promptForCustomStoragePath()
+		},
+		"roo-cline.focusInput": async () => {
+			try {
+				const panel = getPanel()
+
+				if (!panel) {
+					await vscode.commands.executeCommand("workbench.view.extension.roo-cline-ActivityBar")
+				} else if (panel === tabPanel) {
+					panel.reveal(vscode.ViewColumn.Active, false)
+				} else if (panel === sidebarPanel) {
+					await vscode.commands.executeCommand(`${ClineProvider.sideBarId}.focus`)
+					provider.postMessageToWebview({ type: "action", action: "focusInput" })
+				}
+			} catch (error) {
+				outputChannel.appendLine(`Error focusing input: ${error}`)
+			}
+		},
+		"roo.acceptInput": () => {
+			const visibleProvider = getVisibleProviderOrLog(outputChannel)
+
+			if (!visibleProvider) {
+				return
+			}
+
+			visibleProvider.postMessageToWebview({ type: "acceptInput" })
+		},
+	}
+}
 
 export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
 	// (This example uses webviewProvider activation event which is necessary to
@@ -177,8 +186,6 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	// don't need to use that event).
 	// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	const contextProxy = await ContextProxy.getInstance(context)
-	const codeIndexManager = CodeIndexManager.getInstance(context)
-
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy)
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
 
@@ -210,26 +217,10 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 
 	await tabProvider.resolveWebviewView(newPanel)
 
-	// Add listener for visibility changes to notify webview
-	newPanel.onDidChangeViewState(
-		(e) => {
-			const panel = e.webviewPanel
-			if (panel.visible) {
-				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" }) // Use the same message type as in SettingsView.tsx
-			}
-		},
-		null, // First null is for `thisArgs`
-		context.subscriptions, // Register listener for disposal
-	)
-
 	// Handle panel closing events.
-	newPanel.onDidDispose(
-		() => {
-			setPanel(undefined, "tab")
-		},
-		null,
-		context.subscriptions, // Also register dispose listener
-	)
+	newPanel.onDidDispose(() => {
+		setPanel(undefined, "tab")
+	})
 
 	// Lock the editor group so clicking on files doesn't open them over the panel.
 	await delay(100)

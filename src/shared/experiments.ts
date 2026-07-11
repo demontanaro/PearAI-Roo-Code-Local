@@ -1,10 +1,10 @@
-import type { AssertEqual, Equals, Keys, Values, ExperimentId, Experiments } from "@roo-code/types"
+import { ExperimentId } from "../schemas"
+import { AssertEqual, Equals, Keys, Values } from "../utils/type-fu"
+
+export type { ExperimentId }
 
 export const EXPERIMENT_IDS = {
-	PREVENT_FOCUS_DISRUPTION: "preventFocusDisruption",
-	IMAGE_GENERATION: "imageGeneration",
-	RUN_SLASH_COMMAND: "runSlashCommand",
-	CUSTOM_TOOLS: "customTools",
+	POWER_STEERING: "powerSteering",
 } as const satisfies Record<string, ExperimentId>
 
 type _AssertExperimentIds = AssertEqual<Equals<ExperimentId, Values<typeof EXPERIMENT_IDS>>>
@@ -16,10 +16,7 @@ interface ExperimentConfig {
 }
 
 export const experimentConfigsMap: Record<ExperimentKey, ExperimentConfig> = {
-	PREVENT_FOCUS_DISRUPTION: { enabled: false },
-	IMAGE_GENERATION: { enabled: false },
-	RUN_SLASH_COMMAND: { enabled: false },
-	CUSTOM_TOOLS: { enabled: false },
+	POWER_STEERING: { enabled: false },
 }
 
 export const experimentDefault = Object.fromEntries(
@@ -31,5 +28,6 @@ export const experimentDefault = Object.fromEntries(
 
 export const experiments = {
 	get: (id: ExperimentKey): ExperimentConfig | undefined => experimentConfigsMap[id],
-	isEnabled: (experimentsConfig: Experiments, id: ExperimentId) => experimentsConfig[id] ?? experimentDefault[id],
+	isEnabled: (experimentsConfig: Record<ExperimentId, boolean>, id: ExperimentId) =>
+		experimentsConfig[id] ?? experimentDefault[id],
 } as const

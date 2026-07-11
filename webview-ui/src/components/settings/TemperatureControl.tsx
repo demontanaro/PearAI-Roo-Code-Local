@@ -9,10 +9,9 @@ interface TemperatureControlProps {
 	value: number | undefined | null
 	onChange: (value: number | undefined | null) => void
 	maxValue?: number // Some providers like OpenAI use 0-2 range.
-	defaultValue?: number // Default temperature from model configuration
 }
 
-export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue }: TemperatureControlProps) => {
+export const TemperatureControl = ({ value, onChange, maxValue = 1 }: TemperatureControlProps) => {
 	const { t } = useAppTranslation()
 	const [isCustomTemperature, setIsCustomTemperature] = useState(value !== undefined)
 	const [inputValue, setInputValue] = useState(value)
@@ -38,8 +37,7 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 						if (!isChecked) {
 							setInputValue(null) // Unset the temperature, note that undefined is unserializable.
 						} else {
-							// Use the value from apiConfiguration, or fallback to model's defaultTemperature, or finally to 0
-							setInputValue(value ?? defaultValue ?? 0)
+							setInputValue(value ?? 0) // Use the value from apiConfiguration, if set.
 						}
 					}}>
 					<label className="block font-medium mb-1">{t("settings:temperature.useCustom")}</label>

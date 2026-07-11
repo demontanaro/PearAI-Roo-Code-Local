@@ -1,4 +1,9 @@
 {
+	"greeting": "Hi, I'm Roo!",
+	"introduction": "<strong>PearAI Agent (Powered by Roo Code / Cline) is the premiere autonomous coding agent.</strong> Get ready to architect, code, debug, and boost your productivity like you've never seen before. To continue, PearAI Agent (Powered by Roo Code / Cline) requires an API key.",
+	"notice": "To get started, this extension needs an API provider.",
+	"start": "Let's go!",
+	"chooseProvider": "Choose an API provider to get started:",
 	"routers": {
 		"requesty": {
 			"description": "Your optimized LLM router",
@@ -8,22 +13,16 @@
 			"description": "A unified interface for LLMs"
 		}
 	},
-	"landing": {
-		"greeting": "Welcome to Roo Code!",
-		"introduction": "With a range of built-in and extensible Modes, Roo Code lets you plan, architect, code, debug and boost your productivity like never before.",
-		"getStarted": "Get Started"
+	"startRouter": "Express Setup Through a Router",
+	"startCustom": "Bring Your Own API Key",
+	"telemetry": {
+		"title": "Help Improve PearAI Agent (Powered by Roo Code / Cline)",
+		"anonymousTelemetry": "Send anonymous error and usage data to help us fix bugs and improve the extension. No code, prompts, or personal information is ever sent.",
+		"changeSettings": "You can always change this at the bottom of the <settingsLink>settings</settingsLink>",
+		"settings": "settings",
+		"allow": "Allow",
+		"deny": "Deny"
 	},
-	"providerSignup": {
-		"heading": "Choose your provider",
-		"chooseProvider": "Roo needs an LLM provider to work. Choose one to get started, you can add more later.",
-		"learnMore": "Learn more",
-		"useAnotherProvider": "3rd-party Provider",
-		"useAnotherProviderDescription": "Enter an API key and get going.",
-		"noApiKeys": "Don't want to deal with API keys and separate accounts?",
-		"goBack": "Back",
-		"finish": "Finish"
-	},
-	"startRouter": "We recommend using an LLM Router:",
-	"startCustom": "Or you can bring your provider API key:",
+	"or": "or",
 	"importSettings": "Import Settings"
 }

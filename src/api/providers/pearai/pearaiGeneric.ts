@@ -1,65 +1,355 @@
-import type { ModelInfo } from "@roo-code/types"
+/*
+pearaiGeneric.ts is the same as openai.ts, with changes to support the PearAI API. It currently is used for all hosted non-Anthropic models.
+*/
 
-import type { ApiHandlerOptions } from "../../../shared/api"
-import { PEARAI_URL, allModels, pearaiDefaultModelId, pearaiDefaultModelInfo } from "../../../shared/pearaiApi"
-import { LOCAL_API_KEY_FALLBACK } from "../../../shared/backendConfig"
+import { Anthropic } from "@anthropic-ai/sdk"
+import OpenAI, { AzureOpenAI } from "openai"
+import axios from "axios"
 
-import { OpenAiHandler, getOpenAiModels as getOpenAiModelsFromOpenAi } from "../openai"
+import {
+	ApiHandlerOptions,
+	azureOpenAiDefaultApiVersion,
+	ModelInfo,
+	openAiModelInfoSaneDefaults,
+} from "../../../shared/api"
+import { SingleCompletionHandler } from "../../index"
+import { convertToOpenAiMessages } from "../../transform/openai-format"
+import { convertToR1Format } from "../../transform/r1-format"
+import { convertToSimpleMessages } from "../../transform/simple-format"
+import { ApiStream, ApiStreamUsageChunk } from "../../transform/stream"
+import { BaseProvider } from "../base-provider"
+import { XmlMatcher } from "../../../utils/xml-matcher"
+import { allModels, pearaiDefaultModelId, pearaiDefaultModelInfo } from "../../../shared/pearaiApi"
+import { calculateApiCostOpenAI } from "../../../utils/cost"
 
-type PearAIOptions = ApiHandlerOptions & {
-	pearaiModelId?: string
-	pearaiAgentModels?: {
-		models: Record<string, ModelInfo>
-		defaultModelId?: string
-	}
-	pearaiModelInfo?: ModelInfo
-	pearaiBaseUrl?: string
-	pearaiApiKey?: string
+const DEEP_SEEK_DEFAULT_TEMPERATURE = 0.6
+
+export const defaultHeaders = {
+	"X-Title": "Local OpenAI Compatible",
 }
 
-export class PearAIGenericHandler extends OpenAiHandler {
-	private readonly pearOptions: PearAIOptions
+export interface OpenAiHandlerOptions extends ApiHandlerOptions {}
 
-	constructor(options: ApiHandlerOptions) {
-		const pearOptions = options as PearAIOptions
-		const modelId =
-			pearOptions.openAiModelId ||
-			pearOptions.pearaiModelId ||
-			pearOptions.pearaiAgentModels?.defaultModelId ||
-			pearaiDefaultModelId
-		const modelInfo =
-			pearOptions.pearaiAgentModels?.models[modelId] || pearOptions.pearaiModelInfo || pearaiDefaultModelInfo
+export class PearAIGenericHandler extends BaseProvider implements SingleCompletionHandler {
+	protected options: OpenAiHandlerOptions
+	private client: OpenAI
 
-		super({
-			...pearOptions,
-			openAiBaseUrl: pearOptions.openAiBaseUrl || pearOptions.pearaiBaseUrl || PEARAI_URL,
-			openAiApiKey: pearOptions.openAiApiKey || pearOptions.pearaiApiKey || LOCAL_API_KEY_FALLBACK,
-			openAiModelId: modelId,
-			openAiCustomModelInfo: modelInfo,
-		})
+	constructor(options: OpenAiHandlerOptions) {
+		super()
+		this.options = options
 
-		this.pearOptions = pearOptions
+		const baseURL = this.options.openAiBaseUrl ?? "https://api.openai.com/v1"
+		const apiKey = this.options.openAiApiKey ?? "not-provided"
+		let urlHost: string
+
+		try {
+			urlHost = new URL(this.options.openAiBaseUrl ?? "").host
+		} catch (error) {
+			// Likely an invalid `openAiBaseUrl`; we're still working on
+			// proper settings validation.
+			urlHost = ""
+		}
+
+		if (urlHost === "azure.com" || urlHost.endsWith(".azure.com") || options.openAiUseAzure) {
+			// Azure API shape slightly differs from the core API shape:
+			// https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
+			this.client = new AzureOpenAI({
+				baseURL,
+				apiKey,
+				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
+				defaultHeaders,
+			})
+		} else {
+			this.client = new OpenAI({ baseURL, apiKey, defaultHeaders })
+		}
 	}
 
-	override getModel() {
-		const base = super.getModel()
-		const modelId =
-			base.id || this.pearOptions.openAiModelId || this.pearOptions.pearaiModelId || pearaiDefaultModelId
-		const modelInfo =
-			this.pearOptions.pearaiAgentModels?.models[modelId] ||
-			this.pearOptions.pearaiModelInfo ||
-			allModels[modelId] ||
-			base.info ||
-			pearaiDefaultModelInfo
+	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const modelInfo = this.getModel().info
+		const modelUrl = this.options.openAiBaseUrl ?? ""
+		const modelId = this.options.openAiModelId ?? ""
 
-		return {
-			...base,
-			id: modelId,
-			info: modelInfo,
+		const deepseekReasoner = modelId.includes("deepseek-reasoner")
+		const ark = modelUrl.includes(".volces.com")
+
+		if (modelId.startsWith("o3-mini")) {
+			yield* this.handleO3FamilyMessage(modelId, systemPrompt, messages)
+			return
 		}
+
+		if (this.options.openAiStreamingEnabled ?? true) {
+			let systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
+				role: "system",
+				content: systemPrompt,
+			}
+
+			let convertedMessages
+			if (deepseekReasoner) {
+				convertedMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+			} else if (ark) {
+				convertedMessages = [systemMessage, ...convertToSimpleMessages(messages)]
+			} else {
+				if (modelInfo.supportsPromptCache) {
+					systemMessage = {
+						role: "system",
+						content: [
+							{
+								type: "text",
+								text: systemPrompt,
+								// @ts-ignore-next-line
+								cache_control: { type: "ephemeral" },
+							},
+						],
+					}
+				}
+				convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages)]
+				if (modelInfo.supportsPromptCache) {
+					// Note: the following logic is copied from openrouter:
+					// Add cache_control to the last two user messages
+					// (note: this works because we only ever add one user message at a time, but if we added multiple we'd need to mark the user message before the last assistant message)
+					const lastTwoUserMessages = convertedMessages.filter((msg) => msg.role === "user").slice(-2)
+					lastTwoUserMessages.forEach((msg) => {
+						if (typeof msg.content === "string") {
+							msg.content = [{ type: "text", text: msg.content }]
+						}
+						if (Array.isArray(msg.content)) {
+							// NOTE: this is fine since env details will always be added at the end. but if it weren't there, and the user added a image_url type message, it would pop a text part before it and then move it after to the end.
+							let lastTextPart = msg.content.filter((part) => part.type === "text").pop()
+
+							if (!lastTextPart) {
+								lastTextPart = { type: "text", text: "..." }
+								msg.content.push(lastTextPart)
+							}
+							// @ts-ignore-next-line
+							lastTextPart["cache_control"] = { type: "ephemeral" }
+						}
+					})
+				}
+			}
+
+			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+				model: modelId,
+				temperature: this.options.modelTemperature ?? (deepseekReasoner ? DEEP_SEEK_DEFAULT_TEMPERATURE : 0),
+				messages: convertedMessages,
+				stream: true as const,
+				stream_options: { include_usage: true },
+			}
+			if (this.options.includeMaxTokens) {
+				requestOptions.max_tokens = modelInfo.maxTokens
+			}
+
+			const stream = await this.client.chat.completions.create(requestOptions)
+
+			const matcher = new XmlMatcher(
+				"think",
+				(chunk) =>
+					({
+						type: chunk.matched ? "reasoning" : "text",
+						text: chunk.data,
+					}) as const,
+			)
+
+			let lastUsage
+
+			for await (const chunk of stream) {
+				const delta = chunk.choices[0]?.delta ?? {}
+
+				if (delta.content) {
+					for (const chunk of matcher.update(delta.content)) {
+						yield chunk
+					}
+				}
+
+				if ("reasoning_content" in delta && delta.reasoning_content) {
+					yield {
+						type: "reasoning",
+						text: (delta.reasoning_content as string | undefined) || "",
+					}
+				}
+				if (chunk.usage) {
+					lastUsage = chunk.usage
+				}
+			}
+			for (const chunk of matcher.final()) {
+				yield chunk
+			}
+
+			if (lastUsage) {
+				yield this.processUsageMetrics(lastUsage, modelInfo)
+			}
+		} else {
+			// o1 for instance doesnt support streaming, non-1 temp, or system prompt
+			const systemMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
+				role: "user",
+				content: systemPrompt,
+			}
+
+			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+				model: modelId,
+				messages: deepseekReasoner
+					? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+					: [systemMessage, ...convertToOpenAiMessages(messages)],
+			}
+
+			const response = await this.client.chat.completions.create(requestOptions)
+
+			yield {
+				type: "text",
+				text: response.choices[0]?.message.content || "",
+			}
+			yield this.processUsageMetrics(response.usage, modelInfo)
+		}
+	}
+
+	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
+		const inputTokens = usage?.prompt_tokens || 0
+		const outputTokens = usage?.completion_tokens || 0
+		const cacheWriteTokens = usage?.prompt_tokens_details?.caching_tokens || 0
+		const cacheReadTokens = usage?.prompt_tokens_details?.cached_tokens || 0
+		const totalCost = modelInfo
+			? calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
+			: 0
+		return {
+			type: "usage",
+			inputTokens: inputTokens,
+			outputTokens: outputTokens,
+			cacheWriteTokens: cacheWriteTokens,
+			cacheReadTokens: cacheReadTokens,
+			totalCost: totalCost,
+		}
+	}
+
+	override getModel(): { id: string; info: ModelInfo } {
+		const modelId = this.options.openAiModelId
+		// Prioritize serverside model info
+		if (modelId && this.options.pearaiAgentModels) {
+			let modelInfo = null
+			if (modelId.startsWith("pearai")) {
+				modelInfo = this.options.pearaiAgentModels.models[modelId]
+			} else {
+				modelInfo = this.options.pearaiAgentModels.models[modelId || "pearai-model"]
+			}
+			if (modelInfo) {
+				const result = {
+					id: modelId,
+					info: modelInfo,
+				}
+				return result
+			}
+		}
+
+		const result = {
+			id: modelId ?? pearaiDefaultModelId,
+			info: allModels[modelId ?? pearaiDefaultModelId],
+		}
+		return result
+	}
+	async completePrompt(prompt: string): Promise<string> {
+		try {
+			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+				model: this.getModel().id,
+				messages: [{ role: "user", content: prompt }],
+			}
+
+			const response = await this.client.chat.completions.create(requestOptions)
+			return response.choices[0]?.message.content || ""
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new Error(`OpenAI completion error: ${error.message}`)
+			}
+			throw error
+		}
+	}
+
+	private async *handleO3FamilyMessage(
+		modelId: string,
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+	): ApiStream {
+		if (this.options.openAiStreamingEnabled ?? true) {
+			const stream = await this.client.chat.completions.create({
+				model: "o3-mini",
+				messages: [
+					{
+						role: "developer",
+						content: `Formatting re-enabled\n${systemPrompt}`,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				stream: true,
+				stream_options: { include_usage: true },
+				reasoning_effort: this.getChatReasoningEffort(),
+			})
+
+			yield* this.handleStreamResponse(stream)
+		} else {
+			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+				model: modelId,
+				messages: [
+					{
+						role: "developer",
+						content: `Formatting re-enabled\n${systemPrompt}`,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+			}
+
+			const response = await this.client.chat.completions.create(requestOptions)
+
+			yield {
+				type: "text",
+				text: response.choices[0]?.message.content || "",
+			}
+			yield this.processUsageMetrics(response.usage)
+		}
+	}
+
+	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
+		for await (const chunk of stream) {
+			const delta = chunk.choices[0]?.delta
+			if (delta?.content) {
+				yield {
+					type: "text",
+					text: delta.content,
+				}
+			}
+
+			if (chunk.usage) {
+				yield {
+					type: "usage",
+					inputTokens: chunk.usage.prompt_tokens || 0,
+					outputTokens: chunk.usage.completion_tokens || 0,
+					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens,
+				}
+			}
+		}
+	}
+
+	private getChatReasoningEffort(): OpenAI.Chat.ChatCompletionReasoningEffort | undefined {
+		return this.getModel().info.reasoningEffort as OpenAI.Chat.ChatCompletionReasoningEffort | undefined
 	}
 }
 
 export async function getOpenAiModels(baseUrl?: string, apiKey?: string) {
-	return getOpenAiModelsFromOpenAi(baseUrl, apiKey)
+	try {
+		if (!baseUrl) {
+			return []
+		}
+
+		if (!URL.canParse(baseUrl)) {
+			return []
+		}
+
+		const config: Record<string, any> = {}
+
+		if (apiKey) {
+			config["headers"] = { Authorization: `Bearer ${apiKey}` }
+		}
+
+		const response = await axios.get(`${baseUrl}/models`, config)
+		const modelsArray = response.data?.data?.map((model: any) => model.id) || []
+		return [...new Set<string>(modelsArray)]
+	} catch (error) {
+		return []
+	}
 }

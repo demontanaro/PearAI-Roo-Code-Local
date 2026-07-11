@@ -1,97 +1,5 @@
 import * as vscode from "vscode"
 import { userInfo } from "os"
-import * as path from "path"
-
-// Security: Allowlist of approved shell executables to prevent arbitrary command execution
-const SHELL_ALLOWLIST = new Set<string>([
-	// Windows PowerShell variants
-	"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-	"C:\\Program Files\\PowerShell\\7\\pwsh.exe",
-	"C:\\Program Files\\PowerShell\\6\\pwsh.exe",
-	"C:\\Program Files\\PowerShell\\5\\pwsh.exe",
-
-	// Windows Command Prompt
-	"C:\\Windows\\System32\\cmd.exe",
-
-	// Windows WSL
-	"C:\\Windows\\System32\\wsl.exe",
-
-	// Git Bash on Windows
-	"C:\\Program Files\\Git\\bin\\bash.exe",
-	"C:\\Program Files\\Git\\usr\\bin\\bash.exe",
-	"C:\\Program Files (x86)\\Git\\bin\\bash.exe",
-	"C:\\Program Files (x86)\\Git\\usr\\bin\\bash.exe",
-
-	// MSYS2/MinGW/Cygwin on Windows
-	"C:\\msys64\\usr\\bin\\bash.exe",
-	"C:\\msys32\\usr\\bin\\bash.exe",
-	"C:\\MinGW\\msys\\1.0\\bin\\bash.exe",
-	"C:\\cygwin64\\bin\\bash.exe",
-	"C:\\cygwin\\bin\\bash.exe",
-
-	// Unix/Linux/macOS - Bourne-compatible shells
-	"/bin/sh",
-	"/usr/bin/sh",
-	"/bin/bash",
-	"/usr/bin/bash",
-	"/usr/local/bin/bash",
-	"/opt/homebrew/bin/bash",
-	"/opt/local/bin/bash",
-
-	// Z Shell
-	"/bin/zsh",
-	"/usr/bin/zsh",
-	"/usr/local/bin/zsh",
-	"/opt/homebrew/bin/zsh",
-	"/opt/local/bin/zsh",
-
-	// Dash
-	"/bin/dash",
-	"/usr/bin/dash",
-
-	// Ash
-	"/bin/ash",
-	"/usr/bin/ash",
-
-	// C Shells
-	"/bin/csh",
-	"/usr/bin/csh",
-	"/bin/tcsh",
-	"/usr/bin/tcsh",
-	"/usr/local/bin/tcsh",
-
-	// Korn Shells
-	"/bin/ksh",
-	"/usr/bin/ksh",
-	"/bin/ksh93",
-	"/usr/bin/ksh93",
-	"/bin/mksh",
-	"/usr/bin/mksh",
-	"/bin/pdksh",
-	"/usr/bin/pdksh",
-
-	// Fish Shell
-	"/usr/bin/fish",
-	"/usr/local/bin/fish",
-	"/opt/homebrew/bin/fish",
-	"/opt/local/bin/fish",
-
-	// Modern shells
-	"/usr/bin/elvish",
-	"/usr/local/bin/elvish",
-	"/usr/bin/xonsh",
-	"/usr/local/bin/xonsh",
-	"/usr/bin/nu",
-	"/usr/local/bin/nu",
-	"/usr/bin/nushell",
-	"/usr/local/bin/nushell",
-	"/usr/bin/ion",
-	"/usr/local/bin/ion",
-
-	// BusyBox
-	"/bin/busybox",
-	"/usr/bin/busybox",
-])
 
 const SHELL_PATHS = {
 	// Windows paths
@@ -113,20 +21,20 @@ const SHELL_PATHS = {
 } as const
 
 interface MacTerminalProfile {
-	path?: string | string[]
+	path?: string
 }
 
 type MacTerminalProfiles = Record<string, MacTerminalProfile>
 
 interface WindowsTerminalProfile {
-	path?: string | string[]
+	path?: string
 	source?: "PowerShell" | "WSL"
 }
 
 type WindowsTerminalProfiles = Record<string, WindowsTerminalProfile>
 
 interface LinuxTerminalProfile {
-	path?: string | string[]
+	path?: string
 }
 
 type LinuxTerminalProfiles = Record<string, LinuxTerminalProfile>
@@ -172,18 +80,6 @@ function getLinuxTerminalConfig() {
 // 2) Platform-Specific VS Code Shell Retrieval
 // -----------------------------------------------------
 
-/**
- * Normalizes a path that can be either a string or an array of strings.
- * If it's an array, returns the first element. Otherwise returns the string.
- */
-function normalizeShellPath(path: string | string[] | undefined): string | null {
-	if (!path) return null
-	if (Array.isArray(path)) {
-		return path.length > 0 ? path[0] : null
-	}
-	return path
-}
-
 /** Attempts to retrieve a shell path from VS Code config on Windows. */
 function getWindowsShellFromVSCode(): string | null {
 	const { defaultProfileName, profiles } = getWindowsTerminalConfig()
@@ -195,12 +91,11 @@ function getWindowsShellFromVSCode(): string | null {
 
 	// If the profile name indicates PowerShell, do version-based detection.
 	// In testing it was found these typically do not have a path, and this
-	// implementation manages to deductively get the correct version of PowerShell
+	// implementation manages to deductively get the corect version of PowerShell
 	if (defaultProfileName.toLowerCase().includes("powershell")) {
-		const normalizedPath = normalizeShellPath(profile?.path)
-		if (normalizedPath) {
+		if (profile?.path) {
 			// If there's an explicit PowerShell path, return that
-			return normalizedPath
+			return profile.path
 		} else if (profile?.source === "PowerShell") {
 			// If the profile is sourced from PowerShell, assume the newest
 			return SHELL_PATHS.POWERSHELL_7
@@ -210,9 +105,8 @@ function getWindowsShellFromVSCode(): string | null {
 	}
 
 	// If there's a specific path, return that immediately
-	const normalizedPath = normalizeShellPath(profile?.path)
-	if (normalizedPath) {
-		return normalizedPath
+	if (profile?.path) {
+		return profile.path
 	}
 
 	// If the profile indicates WSL
@@ -232,7 +126,7 @@ function getMacShellFromVSCode(): string | null {
 	}
 
 	const profile = profiles[defaultProfileName]
-	return normalizeShellPath(profile?.path)
+	return profile?.path || null
 }
 
 /** Attempts to retrieve a shell path from VS Code config on Linux. */
@@ -243,7 +137,7 @@ function getLinuxShellFromVSCode(): string | null {
 	}
 
 	const profile = profiles[defaultProfileName]
-	return normalizeShellPath(profile?.path)
+	return profile?.path || null
 }
 
 // -----------------------------------------------------
@@ -285,86 +179,49 @@ function getShellFromEnv(): string | null {
 }
 
 // -----------------------------------------------------
-// 4) Shell Validation Functions
-// -----------------------------------------------------
-
-/**
- * Validates if a shell path is in the allowlist to prevent arbitrary command execution
- */
-function isShellAllowed(shellPath: string): boolean {
-	if (!shellPath) return false
-
-	const normalizedPath = path.normalize(shellPath)
-
-	// Direct lookup first
-	if (SHELL_ALLOWLIST.has(normalizedPath)) {
-		return true
-	}
-
-	// On Windows, try case-insensitive comparison
-	if (process.platform === "win32") {
-		const lowerPath = normalizedPath.toLowerCase()
-		for (const allowedPath of SHELL_ALLOWLIST) {
-			if (allowedPath.toLowerCase() === lowerPath) {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-/**
- * Returns a safe fallback shell based on the platform
- */
-function getSafeFallbackShell(): string {
-	if (process.platform === "win32") {
-		return SHELL_PATHS.CMD
-	} else if (process.platform === "darwin") {
-		return SHELL_PATHS.MAC_DEFAULT
-	} else {
-		return SHELL_PATHS.LINUX_DEFAULT
-	}
-}
-
-// -----------------------------------------------------
-// 5) Publicly Exposed Shell Getter
+// 4) Publicly Exposed Shell Getter
 // -----------------------------------------------------
 
 export function getShell(): string {
-	let shell: string | null = null
-
 	// 1. Check VS Code config first.
 	if (process.platform === "win32") {
 		// Special logic for Windows
-		shell = getWindowsShellFromVSCode()
+		const windowsShell = getWindowsShellFromVSCode()
+		if (windowsShell) {
+			return windowsShell
+		}
 	} else if (process.platform === "darwin") {
 		// macOS from VS Code
-		shell = getMacShellFromVSCode()
+		const macShell = getMacShellFromVSCode()
+		if (macShell) {
+			return macShell
+		}
 	} else if (process.platform === "linux") {
 		// Linux from VS Code
-		shell = getLinuxShellFromVSCode()
+		const linuxShell = getLinuxShellFromVSCode()
+		if (linuxShell) {
+			return linuxShell
+		}
 	}
 
 	// 2. If no shell from VS Code, try userInfo()
-	if (!shell) {
-		shell = getShellFromUserInfo()
+	const userInfoShell = getShellFromUserInfo()
+	if (userInfoShell) {
+		return userInfoShell
 	}
 
 	// 3. If still nothing, try environment variable
-	if (!shell) {
-		shell = getShellFromEnv()
+	const envShell = getShellFromEnv()
+	if (envShell) {
+		return envShell
 	}
 
 	// 4. Finally, fall back to a default
-	if (!shell) {
-		shell = getSafeFallbackShell()
+	if (process.platform === "win32") {
+		// On Windows, if we got here, we have no config, no COMSPEC, and one very messed up operating system.
+		// Use CMD as a last resort
+		return SHELL_PATHS.CMD
 	}
-
-	// 5. Validate the shell against allowlist
-	if (!isShellAllowed(shell)) {
-		shell = getSafeFallbackShell()
-	}
-
-	return shell
+	// On macOS/Linux, fallback to a POSIX shell - This is the behavior of our old shell detection method.
+	return SHELL_PATHS.FALLBACK
 }

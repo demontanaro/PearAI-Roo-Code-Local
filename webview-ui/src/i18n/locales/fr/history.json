@@ -35,24 +35,5 @@
 	"confirmDeleteTasks": "Êtes-vous sûr de vouloir supprimer {{count}} tâches ?",
 	"deleteTasksWarning": "Les tâches supprimées ne peuvent pas être récupérées. Veuillez confirmer que vous souhaitez continuer.",
 	"deleteItems": "Supprimer {{count}} éléments",
-	"workspace": {
-		"prefix": "Espace de travail :",
-		"current": "Actuel",
-		"all": "Tous"
-	},
-	"sort": {
-		"prefix": "Trier :",
-		"newest": "Plus récentes",
-		"oldest": "Plus anciennes",
-		"mostExpensive": "Plus coûteuses",
-		"mostTokens": "Plus de tokens",
-		"mostRelevant": "Plus pertinentes"
-	},
-	"viewAllHistory": "Voir tout",
-	"subtasks_one": "{{count}} sous-tâche",
-	"subtasks_other": "{{count}} sous-tâches",
-	"subtaskTag": "Sous-tâche",
-	"deleteWithSubtasks": "Cela supprimera aussi {{count}} sous-tâche(s). Êtes-vous sûr ?",
-	"expandSubtasks": "Développer les sous-tâches",
-	"collapseSubtasks": "Réduire les sous-tâches"
+	"showAllWorkspaces": "Afficher les tâches de tous les espaces de travail"
 }

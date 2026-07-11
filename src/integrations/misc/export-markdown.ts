@@ -3,19 +3,8 @@ import os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
 
-// Extended content block types to support new Anthropic API features
-interface ReasoningBlock {
-	type: "reasoning"
-	text: string
-}
-
-interface ThoughtSignatureBlock {
-	type: "thoughtSignature"
-}
-
-export type ExtendedContentBlock = Anthropic.Messages.ContentBlockParam | ReasoningBlock | ThoughtSignatureBlock
-
-export function getTaskFileName(dateTs: number): string {
+export async function downloadTask(dateTs: number, conversationHistory: Anthropic.MessageParam[]) {
+	// File name
 	const date = new Date(dateTs)
 	const month = date.toLocaleString("en-US", { month: "short" }).toLowerCase()
 	const day = date.getDate()
@@ -26,23 +15,14 @@ export function getTaskFileName(dateTs: number): string {
 	const ampm = hours >= 12 ? "pm" : "am"
 	hours = hours % 12
 	hours = hours ? hours : 12 // the hour '0' should be '12'
-	return `roo_task_${month}-${day}-${year}_${hours}-${minutes}-${seconds}-${ampm}.md`
-}
-
-export async function downloadTask(
-	dateTs: number,
-	conversationHistory: Anthropic.MessageParam[],
-	defaultUri: vscode.Uri,
-): Promise<vscode.Uri | undefined> {
-	// File name
-	const fileName = getTaskFileName(dateTs)
+	const fileName = `roo_task_${month}-${day}-${year}_${hours}-${minutes}-${seconds}-${ampm}.md`
 
 	// Generate markdown
 	const markdownContent = conversationHistory
 		.map((message) => {
 			const role = message.role === "user" ? "**User:**" : "**Assistant:**"
 			const content = Array.isArray(message.content)
-				? message.content.map((block) => formatContentBlockToMarkdown(block as ExtendedContentBlock)).join("\n")
+				? message.content.map((block) => formatContentBlockToMarkdown(block)).join("\n")
 				: message.content
 			return `${role}\n\n${content}\n\n`
 		})
@@ -51,42 +31,33 @@ export async function downloadTask(
 	// Prompt user for save location
 	const saveUri = await vscode.window.showSaveDialog({
 		filters: { Markdown: ["md"] },
-		defaultUri,
+		defaultUri: vscode.Uri.file(path.join(os.homedir(), "Downloads", fileName)),
 	})
 
 	if (saveUri) {
 		// Write content to the selected location
 		await vscode.workspace.fs.writeFile(saveUri, Buffer.from(markdownContent))
 		vscode.window.showTextDocument(saveUri, { preview: true })
-		return saveUri
 	}
-	return undefined
 }
 
-export function formatContentBlockToMarkdown(block: ExtendedContentBlock): string {
+export function formatContentBlockToMarkdown(block: Anthropic.Messages.ContentBlockParam): string {
 	switch (block.type) {
 		case "text":
 			return block.text
 		case "image":
 			return `[Image]`
-		case "tool_use": {
+		case "tool_use":
 			let input: string
 			if (typeof block.input === "object" && block.input !== null) {
 				input = Object.entries(block.input)
-					.map(([key, value]) => {
-						const formattedKey = key.charAt(0).toUpperCase() + key.slice(1)
-						// Handle nested objects/arrays by JSON stringifying them
-						const formattedValue =
-							typeof value === "object" && value !== null ? JSON.stringify(value, null, 2) : String(value)
-						return `${formattedKey}: ${formattedValue}`
-					})
+					.map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
 					.join("\n")
 			} else {
 				input = String(block.input)
 			}
 			return `[Tool Use: ${block.name}]\n${input}`
-		}
-		case "tool_result": {
+		case "tool_result":
 			// For now we're not doing tool name lookup since we don't use tools anymore
 			// const toolName = findToolName(block.tool_use_id, messages)
 			const toolName = "Tool"
@@ -99,14 +70,8 @@ export function formatContentBlockToMarkdown(block: ExtendedContentBlock): strin
 			} else {
 				return `[${toolName}${block.is_error ? " (Error)" : ""}]`
 			}
-		}
-		case "reasoning":
-			return `[Reasoning]\n${block.text}`
-		case "thoughtSignature":
-			// Not relevant for human-readable exports
-			return ""
 		default:
-			return `[Unexpected content type: ${block.type}]`
+			return "[Unexpected content type]"
 	}
 }
 

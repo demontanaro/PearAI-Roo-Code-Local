@@ -3,8 +3,6 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import { convertTheme } from "monaco-vscode-textmate-theme-converter/lib/cjs"
 
-import { Package } from "../../shared/package"
-
 const defaultThemes: Record<string, string> = {
 	"Default Dark Modern": "dark_modern",
 	"Dark+": "dark_plus",
@@ -56,7 +54,7 @@ export async function getTheme() {
 		if (currentTheme === undefined && defaultThemes[colorTheme]) {
 			const filename = `${defaultThemes[colorTheme]}.json`
 			currentTheme = await fs.readFile(
-				path.join(getExtensionUri().fsPath, "integrations", "theme", "default-themes", filename),
+				path.join(getExtensionUri().fsPath, "src", "integrations", "theme", "default-themes", filename),
 				"utf-8",
 			)
 		}
@@ -66,7 +64,7 @@ export async function getTheme() {
 
 		if (parsed.include) {
 			const includeThemeString = await fs.readFile(
-				path.join(getExtensionUri().fsPath, "integrations", "theme", "default-themes", parsed.include),
+				path.join(getExtensionUri().fsPath, "src", "integrations", "theme", "default-themes", parsed.include),
 				"utf-8",
 			)
 			const includeTheme = parseThemeString(includeThemeString)
@@ -143,5 +141,5 @@ export function mergeJson(
 }
 
 function getExtensionUri(): vscode.Uri {
-	return vscode.extensions.getExtension(`${Package.publisher}.${Package.name}`)!.extensionUri
+	return vscode.extensions.getExtension("rooveterinaryinc.roo-cline")!.extensionUri
 }

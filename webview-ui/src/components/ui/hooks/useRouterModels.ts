@@ -1,20 +1,13 @@
-import { useQuery } from "@tanstack/react-query"
-
-import { type RouterModels, type ExtensionMessage } from "@roo-code/types"
+import { RouterModels } from "@roo/shared/api"
 
 import { vscode } from "@src/utils/vscode"
+import { ExtensionMessage } from "@roo/shared/ExtensionMessage"
+import { useQuery } from "@tanstack/react-query"
 
-type UseRouterModelsOptions = {
-	provider?: string // single provider filter (e.g. "openrouter")
-	enabled?: boolean // gate fetching entirely
-}
-
-const getRouterModels = async (provider?: string) =>
+const getRouterModels = async () =>
 	new Promise<RouterModels>((resolve, reject) => {
 		const cleanup = () => {
-			if (typeof window !== "undefined") {
-				window.removeEventListener("message", handler)
-			}
+			window.removeEventListener("message", handler)
 		}
 
 		const timeout = setTimeout(() => {
@@ -26,14 +19,6 @@ const getRouterModels = async (provider?: string) =>
 			const message: ExtensionMessage = event.data
 
 			if (message.type === "routerModels") {
-				const msgProvider = message?.values?.provider as string | undefined
-
-				// Verify response matches request
-				if (provider !== msgProvider) {
-					// Not our response; ignore and wait for the matching one
-					return
-				}
-
 				clearTimeout(timeout)
 				cleanup()
 
@@ -46,18 +31,7 @@ const getRouterModels = async (provider?: string) =>
 		}
 
 		window.addEventListener("message", handler)
-		if (provider) {
-			vscode.postMessage({ type: "requestRouterModels", values: { provider } })
-		} else {
-			vscode.postMessage({ type: "requestRouterModels" })
-		}
+		vscode.postMessage({ type: "requestRouterModels" })
 	})
 
-export const useRouterModels = (opts: UseRouterModelsOptions = {}) => {
-	const provider = opts.provider || undefined
-	return useQuery({
-		queryKey: ["routerModels", provider || "all"],
-		queryFn: () => getRouterModels(provider),
-		enabled: opts.enabled !== false,
-	})
-}
+export const useRouterModels = () => useQuery({ queryKey: ["routerModels"], queryFn: getRouterModels })

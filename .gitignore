@@ -3,22 +3,16 @@ dist
 out
 out-*
 node_modules
-package-lock.json
 coverage/
-mock/
 
 .DS_Store
 
-# IDEs
-.idea
-
 # Builds
 bin/
-*.vsix
+roo-cline-*.vsix
 
 # Local prompts and rules
 /local-prompts
-AGENTS.local.md
 
 # Test environment
 .test_env
@@ -32,26 +26,12 @@ docs/_site/
 .env.*
 !.env.*.sample
 
-# Logging
+
+#Local lint config
+.eslintrc.local.json
+
+#Logging
 logs
-*.log
 
 # Vite development
 .vite-port
-
-# Turborepo
-.turbo
-
-# IntelliJ and Qodo plugin folders
-.idea/
-.qodo/
-.vercel
-.roo/mcp.json
-
-# Qdrant
-qdrant_storage/
-
-# Architect plans
-plans/
-
-roo-cli-*.tar.gz*

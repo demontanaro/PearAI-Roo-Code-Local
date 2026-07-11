@@ -1,4 +1,4 @@
-import { truncateOutput, applyRunLengthEncoding } from "../misc/extract-text"
+import { truncateOutput, applyRunLengthEncoding, processBackspaces, processCarriageReturns } from "../misc/extract-text"
 
 import type {
 	RooTerminalProvider,
@@ -108,11 +108,8 @@ export abstract class BaseTerminal implements RooTerminal {
 	 * or don't belong to the current task
 	 */
 	public cleanCompletedProcessQueue(): void {
-		// Trim retrieved output from each process to free memory, then keep only those with remaining output
-		this.completedProcesses = this.completedProcesses.filter((process) => {
-			process.trimRetrievedOutput()
-			return process.hasUnretrievedOutput()
-		})
+		// Keep only processes with unretrieved output
+		this.completedProcesses = this.completedProcesses.filter((process) => process.hasUnretrievedOutput())
 	}
 
 	/**
@@ -161,7 +158,7 @@ export abstract class BaseTerminal implements RooTerminal {
 	private static terminalZshOhMy: boolean = false
 	private static terminalZshP10k: boolean = false
 	private static terminalZdotdir: boolean = false
-	private static execaShellPath: string | undefined = undefined
+	private static compressProgressBar: boolean = true
 
 	/**
 	 * Compresses terminal output by applying run-length encoding and truncating to line limit
@@ -173,7 +170,7 @@ export abstract class BaseTerminal implements RooTerminal {
 	}
 
 	public static getShellIntegrationTimeout(): number {
-		return BaseTerminal.shellIntegrationTimeout
+		return Math.min(BaseTerminal.shellIntegrationTimeout, BaseTerminal.defaultShellIntegrationTimeout)
 	}
 
 	public static setShellIntegrationDisabled(disabled: boolean): void {
@@ -265,19 +262,19 @@ export abstract class BaseTerminal implements RooTerminal {
 	}
 
 	/**
-	 * Compresses terminal output by applying run-length encoding and truncating to reasonable limits.
-	 * Uses hardcoded defaults: 500 lines, 50K characters - these are UI display limits to prevent
-	 * memory issues, not LLM context limits (which are controlled by terminalOutputPreviewSize).
+	 * Compresses terminal output by applying run-length encoding and truncating to line limit
 	 * @param input The terminal output to compress
 	 * @returns The compressed terminal output
 	 */
-	public static compressTerminalOutput(input: string): string {
-		// Hardcoded UI display limits - these prevent unbounded memory growth
-		// in the chat display, separate from the LLM context limits
-		const LINE_LIMIT = 500
-		const CHARACTER_LIMIT = 50_000
+	public static compressTerminalOutput(input: string, lineLimit: number): string {
+		let processedInput = input
 
-		return truncateOutput(applyRunLengthEncoding(input), LINE_LIMIT, CHARACTER_LIMIT)
+		if (BaseTerminal.compressProgressBar) {
+			processedInput = processCarriageReturns(processedInput)
+			processedInput = processBackspaces(processedInput)
+		}
+
+		return truncateOutput(applyRunLengthEncoding(processedInput), lineLimit)
 	}
 
 	/**
@@ -296,11 +293,19 @@ export abstract class BaseTerminal implements RooTerminal {
 		return BaseTerminal.terminalZdotdir
 	}
 
-	public static setExecaShellPath(shellPath: string | undefined): void {
-		BaseTerminal.execaShellPath = shellPath
+	/**
+	 * Sets whether to compress progress bar output by processing carriage returns
+	 * @param enabled Whether to enable progress bar compression
+	 */
+	public static setCompressProgressBar(enabled: boolean): void {
+		BaseTerminal.compressProgressBar = enabled
 	}
 
-	public static getExecaShellPath(): string | undefined {
-		return BaseTerminal.execaShellPath
+	/**
+	 * Gets whether progress bar compression is enabled
+	 * @returns Whether progress bar compression is enabled
+	 */
+	public static getCompressProgressBar(): boolean {
+		return BaseTerminal.compressProgressBar
 	}
 }

@@ -2,29 +2,15 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { GoogleAuth, JWTInput } from "google-auth-library"
 
-import {
-	type ModelInfo,
-	type VertexModelId,
-	vertexDefaultModelId,
-	vertexModels,
-	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	VERTEX_1M_CONTEXT_MODEL_IDS,
-} from "@roo-code/types"
-import { safeJsonParse } from "@roo-code/core"
-
-import { ApiHandlerOptions } from "../../shared/api"
+import { ApiHandlerOptions, ModelInfo, vertexDefaultModelId, VertexModelId, vertexModels } from "../../shared/api"
+import { safeJsonParse } from "../../shared/safeJsonParse"
 
 import { ApiStream } from "../transform/stream"
 import { addCacheBreakpoints } from "../transform/caching/vertex"
-import { getModelParams } from "../transform/model-params"
-import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
-import {
-	convertOpenAIToolsToAnthropic,
-	convertOpenAIToolChoiceToAnthropic,
-} from "../../core/prompts/tools/native-tools/converters"
 
+import { getModelParams, SingleCompletionHandler } from "../index"
+import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "./constants"
 import { BaseProvider } from "./base-provider"
-import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 
 // https://docs.anthropic.com/en/api/claude-on-vertex-ai
 export class AnthropicVertexHandler extends BaseProvider implements SingleCompletionHandler {
@@ -63,22 +49,14 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		}
 	}
 
-	override async *createMessage(
-		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-	): ApiStream {
-		let { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel()
-
-		const { supportsPromptCache } = info
-
-		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
-		const sanitizedMessages = filterNonAnthropicBlocks(messages)
-
-		const nativeToolParams = {
-			tools: convertOpenAIToolsToAnthropic(metadata?.tools ?? []),
-			tool_choice: convertOpenAIToolChoiceToAnthropic(metadata?.tool_choice, metadata?.parallelToolCalls),
-		}
+	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		let {
+			id,
+			info: { supportsPromptCache },
+			temperature,
+			maxTokens,
+			thinking,
+		} = this.getModel()
 
 		/**
 		 * Vertex API has specific limitations for prompt caching:
@@ -102,15 +80,11 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			system: supportsPromptCache
 				? [{ text: systemPrompt, type: "text" as const, cache_control: { type: "ephemeral" } }]
 				: systemPrompt,
-			messages: supportsPromptCache ? addCacheBreakpoints(sanitizedMessages) : sanitizedMessages,
+			messages: supportsPromptCache ? addCacheBreakpoints(messages) : messages,
 			stream: true,
-			...nativeToolParams,
 		}
 
-		// and prompt caching
-		const requestOptions = betas?.length ? { headers: { "anthropic-beta": betas.join(",") } } : undefined
-
-		const stream = await this.client.messages.create(params, requestOptions)
+		const stream = await this.client.messages.create(params)
 
 		for await (const chunk of stream) {
 			switch (chunk.type) {
@@ -154,17 +128,6 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 							yield { type: "reasoning", text: (chunk.content_block as any).thinking }
 							break
 						}
-						case "tool_use": {
-							// Emit initial tool call partial with id and name
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: chunk.content_block!.id,
-								name: chunk.content_block!.name,
-								arguments: undefined,
-							}
-							break
-						}
 					}
 
 					break
@@ -179,26 +142,8 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 							yield { type: "reasoning", text: (chunk.delta as any).thinking }
 							break
 						}
-						case "input_json_delta": {
-							// Emit tool call partial chunks as arguments stream in
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: undefined,
-								name: undefined,
-								arguments: (chunk.delta as any).partial_json,
-							}
-							break
-						}
 					}
 
-					break
-				}
-				case "content_block_stop": {
-					// Block complete - no action needed for now.
-					// NativeToolCallParser handles tool call completion
-					// Note: Signature for multi-turn thinking would require using stream.finalMessage()
-					// after iteration completes, which requires restructuring the streaming approach.
 					break
 				}
 			}
@@ -208,54 +153,18 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 	getModel() {
 		const modelId = this.options.apiModelId
 		let id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
-		let info: ModelInfo = vertexModels[id]
+		const info: ModelInfo = vertexModels[id]
 
-		// Check if 1M context beta should be enabled for supported models
-		const supports1MContext = VERTEX_1M_CONTEXT_MODEL_IDS.includes(
-			id as (typeof VERTEX_1M_CONTEXT_MODEL_IDS)[number],
-		)
-		const enable1MContext = supports1MContext && this.options.vertex1MContext
-
-		// If 1M context beta is enabled, update the model info with tier pricing
-		if (enable1MContext) {
-			const tier = info.tiers?.[0]
-			if (tier) {
-				info = {
-					...info,
-					contextWindow: tier.contextWindow,
-					inputPrice: tier.inputPrice,
-					outputPrice: tier.outputPrice,
-					cacheWritesPrice: tier.cacheWritesPrice,
-					cacheReadsPrice: tier.cacheReadsPrice,
-				}
-			}
+		// The `:thinking` variant is a virtual identifier for thinking-enabled
+		// models (similar to how it's handled in the Anthropic provider.)
+		if (id.endsWith(":thinking")) {
+			id = id.replace(":thinking", "") as VertexModelId
 		}
 
-		const params = getModelParams({
-			format: "anthropic",
-			modelId: id,
-			model: info,
-			settings: this.options,
-			defaultTemperature: 0,
-		})
-
-		// Build betas array for request headers
-		const betas: string[] = []
-
-		// Add 1M context beta flag if enabled for supported models
-		if (enable1MContext) {
-			betas.push("context-1m-2025-08-07")
-		}
-
-		// The `:thinking` suffix indicates that the model is a "Hybrid"
-		// reasoning model and that reasoning is required to be enabled.
-		// The actual model ID honored by Anthropic's API does not have this
-		// suffix.
 		return {
-			id: id.endsWith(":thinking") ? id.replace(":thinking", "") : id,
+			id,
 			info,
-			betas: betas.length > 0 ? betas : undefined,
-			...params,
+			...getModelParams({ options: this.options, model: info, defaultMaxTokens: ANTHROPIC_DEFAULT_MAX_TOKENS }),
 		}
 	}
 
@@ -266,7 +175,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				info: { supportsPromptCache },
 				temperature,
 				maxTokens = ANTHROPIC_DEFAULT_MAX_TOKENS,
-				reasoning: thinking,
+				thinking,
 			} = this.getModel()
 
 			const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {

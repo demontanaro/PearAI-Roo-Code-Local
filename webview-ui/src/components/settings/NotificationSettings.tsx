@@ -1,11 +1,11 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { Bell } from "lucide-react"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
-import { SearchableSetting } from "./SearchableSetting"
 import { Slider } from "../ui"
 
 type NotificationSettingsProps = HTMLAttributes<HTMLDivElement> & {
@@ -27,13 +27,15 @@ export const NotificationSettings = ({
 	const { t } = useAppTranslation()
 	return (
 		<div {...props}>
-			<SectionHeader>{t("settings:sections.notifications")}</SectionHeader>
+			<SectionHeader>
+				<div className="flex items-center gap-2">
+					<Bell className="w-4" />
+					<div>{t("settings:sections.notifications")}</div>
+				</div>
+			</SectionHeader>
 
 			<Section>
-				<SearchableSetting
-					settingId="notifications-tts"
-					section="notifications"
-					label={t("settings:notifications.tts.label")}>
+				<div>
 					<VSCodeCheckbox
 						checked={ttsEnabled}
 						onChange={(e: any) => setCachedStateField("ttsEnabled", e.target.checked)}
@@ -43,14 +45,11 @@ export const NotificationSettings = ({
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:notifications.tts.description")}
 					</div>
-				</SearchableSetting>
+				</div>
 
 				{ttsEnabled && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
-						<SearchableSetting
-							settingId="notifications-tts-speed"
-							section="notifications"
-							label={t("settings:notifications.tts.speedLabel")}>
+						<div>
 							<label className="block font-medium mb-1">
 								{t("settings:notifications.tts.speedLabel")}
 							</label>
@@ -65,14 +64,11 @@ export const NotificationSettings = ({
 								/>
 								<span className="w-10">{((ttsSpeed ?? 1.0) * 100).toFixed(0)}%</span>
 							</div>
-						</SearchableSetting>
+						</div>
 					</div>
 				)}
 
-				<SearchableSetting
-					settingId="notifications-sound"
-					section="notifications"
-					label={t("settings:notifications.sound.label")}>
+				<div>
 					<VSCodeCheckbox
 						checked={soundEnabled}
 						onChange={(e: any) => setCachedStateField("soundEnabled", e.target.checked)}
@@ -82,14 +78,11 @@ export const NotificationSettings = ({
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:notifications.sound.description")}
 					</div>
-				</SearchableSetting>
+				</div>
 
 				{soundEnabled && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
-						<SearchableSetting
-							settingId="notifications-sound-volume"
-							section="notifications"
-							label={t("settings:notifications.sound.volumeLabel")}>
+						<div>
 							<label className="block font-medium mb-1">
 								{t("settings:notifications.sound.volumeLabel")}
 							</label>
@@ -104,7 +97,7 @@ export const NotificationSettings = ({
 								/>
 								<span className="w-10">{((soundVolume ?? 0.5) * 100).toFixed(0)}%</span>
 							</div>
-						</SearchableSetting>
+						</div>
 					</div>
 				)}
 			</Section>

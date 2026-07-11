@@ -1,119 +1,80 @@
 name: Bug Report
-description: Report a broken behavior in plain language with a minimal reproduction
+description: Clearly report a bug with detailed repro steps
 labels: ["bug"]
-title: "[BUG] "
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for your report! Please search existing issues first:
-        https://github.com/RooCodeInc/Roo-Code/issues
-
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem (one or two sentences)
-      description: Describe what went wrong in plain language.
-      placeholder: 'Example: "Expected the task to start, but nothing happened and no message appeared."'
-    validations:
-      required: true
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Context (who is affected and when)
-      description: Who sees this and in what situation? Keep it non-technical.
-      placeholder: 'Example: "Happens to new users when starting a run from the New Run page with dark theme enabled."'
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Reproduction steps
-      description: Provide clear, numbered steps so we can reproduce.
-      placeholder: |
-        1) Environment/setup (OS, extension version, relevant settings)
-        2) Exact actions (clicks, inputs, commands)
-        3) What you observed after each step
-    validations:
-      required: true
-
-  - type: input
-    id: expected
-    attributes:
-      label: Expected result
-      placeholder: e.g., "The task starts and shows progress."
-    validations:
-      required: true
-
-  - type: input
-    id: actual
-    attributes:
-      label: Actual result
-      placeholder: e.g., "The button appears disabled and no progress is shown."
-    validations:
-      required: true
-
-  - type: textarea
-    id: variations
-    attributes:
-      label: Variations tried (optional)
-      description: Different browsers, devices, providers, or settings you tried.
-      placeholder: e.g., "Tried Chrome/Firefox, disabling dark theme, switching providers."
-
   - type: input
     id: version
     attributes:
       label: App Version
-      description: What version of Roo Code are you using? (e.g., v3.3.1)
+      description: Specify exactly which version you're using (e.g., v3.3.1)
     validations:
       required: true
 
   - type: dropdown
     id: provider
     attributes:
-      label: API Provider (optional)
+      label: API Provider
+      description: Choose the API provider involved
+      multiple: false
       options:
+        - OpenRouter
         - Anthropic
-        - Amazon Bedrock
-        - Chutes AI
-        - DeepSeek
-        - Featherless AI
-        - Fireworks AI
         - Google Gemini
-        - Google Vertex AI
-        - Groq
-        - LiteLLM
-        - LM Studio
-        - Mistral AI
-        - Ollama
+        - DeepSeek
         - OpenAI
         - OpenAI Compatible
-        - OpenRouter
+        - GCP Vertex AI
+        - Amazon Bedrock
         - Requesty
-        - SambaNova
-        - Unbound
-        - VS Code Language Model API
-        - xAI (Grok)
-        - Not Applicable / Other
+        - Glama
+        - VS Code LM API
+        - LM Studio
+        - Ollama
+    validations:
+      required: true
 
   - type: input
     id: model
     attributes:
-      label: Model Used (optional)
-      description: Exact model name (e.g., Claude 3.7 Sonnet). Use N/A if irrelevant.
+      label: Model Used
+      description: Clearly specify the exact model (e.g., Claude 3.7 Sonnet)
+    validations:
+      required: true
 
   - type: textarea
-    id: roo-code-tasks
+    id: what-happened
     attributes:
-      label: Roo Code Task Links (optional)
-      description: If you have any publicly shared Roo Code task links that demonstrate the issue, paste them here.
-      placeholder: Paste your Roo Code share links here, one per line
+      label: Actual vs. Expected Behavior
+      description: Clearly state what actually happened and what you expected instead.
+      placeholder: Provide precise details of the issue here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Detailed Steps to Reproduce
+      description: |
+        List the exact steps someone must follow to reproduce this bug:
+        1. Starting conditions (software state, settings, environment)
+        2. Precise actions taken (every click, selection, input)
+        3. Clearly observe and report outcomes
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Relevant logs or errors (optional)
-      description: Paste relevant output or errors. Use triple backticks (```) for formatting.
+      label: Relevant API Request Output
+      description: Paste relevant API logs or outputs here (formatted automatically as code)
       render: shell
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Include extra details, screenshots, or related issues.

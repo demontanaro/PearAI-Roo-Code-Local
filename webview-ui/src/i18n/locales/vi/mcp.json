@@ -1,39 +1,34 @@
 {
 	"title": "Máy chủ MCP",
 	"done": "Hoàn thành",
-	"description": "<0>Giao thức ngữ cảnh mô hình</0> cho phép giao tiếp với các máy chủ MCP đang chạy cục bộ, cung cấp các công cụ và tài nguyên bổ sung để mở rộng khả năng của Roo. Bạn có thể sử dụng <1>các máy chủ do cộng đồng tạo</1> hoặc yêu cầu Roo tạo các công cụ mới dành riêng cho quy trình làm việc của bạn (ví dụ: \"thêm công cụ lấy tài liệu npm mới nhất\").",
-	"instructions": "Hướng dẫn",
+	"description": "<0>Giao thức ngữ cảnh mô hình</0> cho phép giao tiếp với các máy chủ MCP đang chạy cục bộ, cung cấp các công cụ và tài nguyên bổ sung để mở rộng khả năng của Roo. Bạn có thể sử dụng <1>các máy chủ do cộng đồng tạo</1> hoặc yêu cầu Agent tạo các công cụ mới dành riêng cho quy trình làm việc của bạn (ví dụ: \"thêm công cụ lấy tài liệu npm mới nhất\").",
 	"enableToggle": {
 		"title": "Bật máy chủ MCP",
-		"description": "Bật lên để Roo dùng công cụ từ các máy chủ MCP đã kết nối. Roo sẽ có nhiều khả năng hơn. Nếu không dùng các công cụ này, hãy tắt để tiết kiệm chi phí token API."
+		"description": "Khi được bật, Agent sẽ có thể tương tác với các máy chủ MCP cho chức năng nâng cao. Nếu bạn không sử dụng MCP, bạn có thể tắt tính năng này để giảm lượng token mà Agent sử dụng."
 	},
 	"enableServerCreation": {
 		"title": "Bật tạo máy chủ MCP",
-		"description": "Bật lên để Roo giúp bạn tạo <1>máy chủ MCP mới</1> tuỳ chỉnh. <0>Tìm hiểu về tạo máy chủ</0>",
-		"hint": "Mẹo: Để giảm chi phí token API, hãy tắt khi không cần Roo tạo máy chủ MCP mới."
+		"description": "Khi được bật, Agent có thể giúp bạn tạo máy chủ MCP mới thông qua các lệnh như \"thêm công cụ mới để...\". Nếu bạn không cần tạo máy chủ MCP, bạn có thể tắt tính năng này để giảm lượng token mà Agent sử dụng."
 	},
 	"editGlobalMCP": "Chỉnh sửa MCP toàn cục",
 	"editProjectMCP": "Chỉnh sửa MCP dự án",
-	"learnMoreEditingSettings": "Tìm hiểu thêm về chỉnh sửa file cài đặt MCP",
+	"editSettings": "Chỉnh sửa cài đặt MCP",
 	"tool": {
 		"alwaysAllow": "Luôn cho phép",
 		"parameters": "Tham số",
-		"noDescription": "Không có mô tả",
-		"togglePromptInclusion": "Bật/tắt bao gồm trong lời nhắc"
+		"noDescription": "Không có mô tả"
 	},
 	"tabs": {
 		"tools": "Công cụ",
-		"resources": "Tài nguyên",
-		"logs": "Nhật ký"
+		"resources": "Tài nguyên"
 	},
 	"emptyState": {
-		"noTools": "Không tìm thấy công cụ",
-		"noResources": "Không tìm thấy tài nguyên",
-		"noLogs": "Chưa có nhật ký"
+		"noTools": "Không tìm thấy công cụ nào",
+		"noResources": "Không tìm thấy tài nguyên nào"
 	},
 	"networkTimeout": {
 		"label": "Thời gian chờ mạng",
-		"description": "Thời gian tối đa chờ phản hồi từ máy chủ",
+		"description": "Thời gian tối đa để chờ phản hồi từ máy chủ",
 		"options": {
 			"15seconds": "15 giây",
 			"30seconds": "30 giây",
@@ -46,19 +41,13 @@
 		}
 	},
 	"deleteDialog": {
-		"title": "Xoá máy chủ MCP",
-		"description": "Bạn chắc chắn muốn xoá máy chủ MCP \"{{serverName}}\"? Hành động này không thể hoàn tác.",
-		"cancel": "Huỷ",
-		"delete": "Xoá"
+		"title": "Xóa máy chủ MCP",
+		"description": "Bạn có chắc chắn muốn xóa máy chủ MCP \"{{serverName}}\"? Hành động này không thể hoàn tác.",
+		"cancel": "Hủy",
+		"delete": "Xóa"
 	},
 	"serverStatus": {
 		"retrying": "Đang thử lại...",
 		"retryConnection": "Thử kết nối lại"
-	},
-	"refreshMCP": "Làm mới Máy chủ MCP",
-	"execution": {
-		"running": "Đang chạy",
-		"completed": "Hoàn thành",
-		"error": "Lỗi"
 	}
 }

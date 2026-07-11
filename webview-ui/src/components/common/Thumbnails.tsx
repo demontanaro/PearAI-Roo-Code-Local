@@ -39,7 +39,6 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 	return (
 		<div
 			ref={containerRef}
-			className="py-1"
 			style={{
 				display: "flex",
 				flexWrap: "wrap",

@@ -1,16 +1,23 @@
 {
-	"recentTasks": "Ostatnie zadania",
+	"recentTasks": "Zadania",
+	"viewAll": "Zobacz wszystkie",
+	"tokens": "Tokens: ↑{{in}} ↓{{out}}",
+	"cache": "Pamięć podręczna: +{{writes}} → {{reads}}",
+	"apiCost": "Koszt API: ${{cost}}",
 	"history": "Historia",
 	"exitSelectionMode": "Wyłącz tryb wyboru",
 	"enterSelectionMode": "Włącz tryb wyboru",
 	"done": "Gotowe",
-	"searchPlaceholder": "Rozmyte wyszukiwanie historii...",
+	"searchPlaceholder": "Szukaj w historii...",
 	"newest": "Najnowsze",
 	"oldest": "Najstarsze",
 	"mostExpensive": "Najdroższe",
 	"mostTokens": "Najwięcej tokenów",
 	"mostRelevant": "Najbardziej trafne",
 	"deleteTaskTitle": "Usuń zadanie (Shift + Klik, aby pominąć potwierdzenie)",
+	"tokensLabel": "Tokens:",
+	"cacheLabel": "Pamięć podręczna:",
+	"apiCostLabel": "Koszt API:",
 	"copyPrompt": "Kopiuj prompt",
 	"exportTask": "Eksportuj zadanie",
 	"deleteTask": "Usuń zadanie",
@@ -28,24 +35,5 @@
 	"confirmDeleteTasks": "Czy na pewno chcesz usunąć {{count}} zadań?",
 	"deleteTasksWarning": "Usuniętych zadań nie można przywrócić. Upewnij się, że chcesz kontynuować.",
 	"deleteItems": "Usuń {{count}} elementów",
-	"workspace": {
-		"prefix": "Obszar roboczy:",
-		"current": "Bieżący",
-		"all": "Wszystkie"
-	},
-	"sort": {
-		"prefix": "Sortuj:",
-		"newest": "Najnowsze",
-		"oldest": "Najstarsze",
-		"mostExpensive": "Najdroższe",
-		"mostTokens": "Najwięcej tokenów",
-		"mostRelevant": "Najbardziej trafne"
-	},
-	"viewAllHistory": "Zobacz wszystko",
-	"subtasks_one": "{{count}} podzadanie",
-	"subtasks_other": "{{count}} podzadań",
-	"subtaskTag": "Podzadanie",
-	"deleteWithSubtasks": "Spowoduje to usunięcie {{count}} podzadania(ń). Jesteś pewny?",
-	"expandSubtasks": "Rozwiń podzadania",
-	"collapseSubtasks": "Zwiń podzadania"
+	"showAllWorkspaces": "Pokaż zadania ze wszystkich przestrzeni roboczych"
 }
