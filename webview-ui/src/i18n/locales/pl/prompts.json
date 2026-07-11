@@ -1,13 +1,16 @@
 {
-	"title": "Podpowiedzi",
+	"title": "Tryby",
 	"done": "Gotowe",
 	"modes": {
 		"title": "Tryby",
 		"createNewMode": "Utwórz nowy tryb",
+		"importMode": "Importuj tryb",
+		"noMatchFound": "Nie znaleziono trybów",
 		"editModesConfig": "Edytuj konfigurację trybów",
 		"editGlobalModes": "Edytuj tryby globalne",
-		"editProjectModes": "Edytuj tryby projektu (.pearai-agent-ignore)",
-		"createModeHelpText": "Kliknij +, aby utworzyć nowy niestandardowy tryb, lub po prostu poproś Agent w czacie, aby utworzył go dla Ciebie!"
+		"editProjectModes": "Edytuj tryby projektu (.roomodes)",
+		"createModeHelpText": "Tryby to wyspecjalizowane persony, które dostosowują zachowanie Roo. <0>Dowiedz się o używaniu trybów</0> lub <1>dostosowywaniu trybów.</1>",
+		"selectMode": "Szukaj trybów"
 	},
 	"apiConfiguration": {
 		"title": "Konfiguracja API",
@@ -22,7 +25,6 @@
 		"toolNames": {
 			"read": "Czytaj pliki",
 			"edit": "Edytuj pliki",
-			"browser": "Używaj przeglądarki",
 			"command": "Uruchamiaj polecenia",
 			"mcp": "Używaj MCP"
 		},
@@ -31,18 +33,47 @@
 	"roleDefinition": {
 		"title": "Definicja roli",
 		"resetToDefault": "Przywróć domyślne",
-		"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Agent dla tego trybu. Ten opis kształtuje, jak Agent prezentuje się i podchodzi do zadań."
+		"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Roo dla tego trybu. Ten opis kształtuje, jak Roo prezentuje się i podchodzi do zadań."
+	},
+	"description": {
+		"title": "Krótki opis (dla ludzi)",
+		"resetToDefault": "Przywróć domyślny opis",
+		"description": "Krótki opis wyświetlany w rozwijanej liście wyboru trybu."
+	},
+	"whenToUse": {
+		"title": "Kiedy używać (opcjonalne)",
+		"description": "Opisz, kiedy ten tryb powinien być używany. Pomaga to Orchestratorowi wybrać odpowiedni tryb dla zadania.",
+		"resetToDefault": "Przywróć domyślny opis 'Kiedy używać'"
 	},
 	"customInstructions": {
 		"title": "Niestandardowe instrukcje dla trybu (opcjonalne)",
 		"resetToDefault": "Przywróć domyślne",
 		"description": "Dodaj wytyczne dotyczące zachowania specyficzne dla trybu {{modeName}}.",
-		"loadFromFile": "Niestandardowe instrukcje dla trybu {{modeName}} mogą być również ładowane z folderu <span>.pearai-agent/rules-{{modeSlug}}/</span> w Twoim obszarze roboczym (.roorules-{{modeSlug}} i .clinerules-{{modeSlug}} są przestarzałe i wkrótce przestaną działać)."
+		"loadFromFile": "Niestandardowe instrukcje specyficzne dla trybu {{mode}} można również załadować z folderu <span>.roo/rules-{{slug}}/</span> w twoim obszarze roboczym lub z globalnego <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} i .clinerules-{{slug}} są przestarzałe i wkrótce przestaną działać)."
+	},
+	"exportMode": {
+		"title": "Eksportuj tryb",
+		"description": "Eksportuj ten tryb do pliku YAML ze wszystkimi regułami w celu łatwego udostępniania innym.",
+		"export": "Eksportuj tryb",
+		"exporting": "Eksportowanie..."
+	},
+	"importMode": {
+		"selectLevel": "Wybierz, gdzie zaimportować ten tryb:",
+		"import": "Importuj",
+		"importing": "Importowanie...",
+		"global": {
+			"label": "Poziom globalny",
+			"description": "Dostępne we wszystkich projektach. Reguły zostaną scalone z niestandardowymi instrukcjami."
+		},
+		"project": {
+			"label": "Poziom projektu",
+			"description": "Dostępne tylko w tym obszarze roboczym. Jeśli wyeksportowany tryb zawierał pliki reguł, zostaną one odtworzone w folderze .roo/rules-{slug}/."
+		}
 	},
 	"globalCustomInstructions": {
 		"title": "Niestandardowe instrukcje dla wszystkich trybów",
-		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej.\nJeśli chcesz, aby Agent myślał i mówił w języku innym niż język wyświetlania Twojego edytora ({{language}}), możesz to określić tutaj.",
-		"loadFromFile": "Instrukcje mogą być również ładowane z folderu <span>.pearai-agent/rules/</span> w Twoim obszarze roboczym (.roorules i .clinerules są przestarzałe i wkrótce przestaną działać)."
+		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej. <0>Dowiedz się więcej</0>",
+		"loadFromFile": "Instrukcje można również załadować z folderu <span>.roo/rules/</span> w twoim obszarze roboczym lub z globalnego <0>.roo/rules/</0> (.roorules i .clinerules są przestarzałe i wkrótce przestaną działać)."
 	},
 	"systemPrompt": {
 		"preview": "Podgląd podpowiedzi systemowej",
@@ -58,12 +89,24 @@
 			"apiConfigDescription": "Możesz wybrać konfigurację API, która będzie zawsze używana do ulepszania podpowiedzi, lub po prostu użyć aktualnie wybranej",
 			"useCurrentConfig": "Użyj aktualnie wybranej konfiguracji API",
 			"testPromptPlaceholder": "Wprowadź podpowiedź, aby przetestować ulepszenie",
-			"previewButton": "Podgląd ulepszenia podpowiedzi"
+			"previewButton": "Podgląd ulepszenia podpowiedzi",
+			"testEnhancement": "Testuj ulepszenie",
+			"includeTaskHistory": "Uwzględnij historię zadań jako kontekst",
+			"includeTaskHistoryDescription": "Gdy włączone, ostatnie 10 wiadomości z bieżącej rozmowy zostanie uwzględnione jako kontekst podczas ulepszania podpowiedzi, pomagając generować bardziej trafne i świadome kontekstu sugestie."
+		},
+		"condense": {
+			"apiConfiguration": "Konfiguracja API do kondensacji kontekstu",
+			"apiConfigDescription": "Wybierz, której konfiguracji API użyć do operacji kondensacji kontekstu. Pozostaw niewybrane, aby użyć bieżącej aktywnej konfiguracji.",
+			"useCurrentConfig": "Użyj aktualnie wybranej konfiguracji API"
 		},
 		"types": {
 			"ENHANCE": {
 				"label": "Ulepsz podpowiedź",
-				"description": "Użyj ulepszenia podpowiedzi, aby uzyskać dostosowane sugestie lub ulepszenia dla swoich danych wejściowych. Zapewnia to, że Agent rozumie Twoje intencje i dostarcza najlepsze możliwe odpowiedzi. Dostępne za pośrednictwem ikony ✨ w czacie."
+				"description": "Użyj ulepszenia podpowiedzi, aby uzyskać dostosowane sugestie lub ulepszenia dla swoich danych wejściowych. Zapewnia to, że Roo rozumie Twoje intencje i dostarcza najlepsze możliwe odpowiedzi. Dostępne za pośrednictwem ikony ✨ w czacie."
+			},
+			"CONDENSE": {
+				"label": "Kondensacja kontekstu",
+				"description": "Skonfiguruj, w jaki sposób kontekst rozmowy jest kondensowany w celu zarządzania limitami tokenów. Ten monit jest używany zarówno do ręcznych, jak i automatycznych operacji kondensacji kontekstu."
 			},
 			"EXPLAIN": {
 				"label": "Wyjaśnij kod",
@@ -99,10 +142,6 @@
 			}
 		}
 	},
-	"advancedSystemPrompt": {
-		"title": "Zaawansowane: Zastąp podpowiedź systemową",
-		"description": "Możesz całkowicie zastąpić podpowiedź systemową dla tego trybu (oprócz definicji roli i niestandardowych instrukcji) poprzez utworzenie pliku w .pearai-agent/system-prompt-{{modeSlug}} w swoim obszarze roboczym. Jest to bardzo zaawansowana funkcja, która omija wbudowane zabezpieczenia i kontrole spójności (szczególnie wokół używania narzędzi), więc bądź ostrożny!"
-	},
 	"createModeDialog": {
 		"title": "Utwórz nowy tryb",
 		"close": "Zamknij",
@@ -122,17 +161,25 @@
 				"description": "Dostępny we wszystkich obszarach roboczych"
 			},
 			"project": {
-				"label": "Specyficzny dla projektu (.pearai-agent-ignore)",
+				"label": "Specyficzny dla projektu (.roomodes)",
 				"description": "Dostępny tylko w tym obszarze roboczym, ma pierwszeństwo przed globalnym"
 			}
 		},
 		"roleDefinition": {
 			"label": "Definicja roli",
-			"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Agent dla tego trybu."
+			"description": "Zdefiniuj wiedzę specjalistyczną i osobowość Roo dla tego trybu."
+		},
+		"whenToUse": {
+			"label": "Kiedy używać (opcjonalne)",
+			"description": "Podaj jasny opis, kiedy ten tryb jest najbardziej efektywny i w jakich typach zadań się sprawdza."
 		},
 		"tools": {
 			"label": "Dostępne narzędzia",
 			"description": "Wybierz, których narzędzi może używać ten tryb."
+		},
+		"description": {
+			"label": "Krótki opis (dla ludzi)",
+			"description": "Krótki opis wyświetlany w rozwijanej liście wyboru trybu."
 		},
 		"customInstructions": {
 			"label": "Niestandardowe instrukcje (opcjonalne)",
@@ -144,5 +191,13 @@
 		},
 		"deleteMode": "Usuń tryb"
 	},
-	"allFiles": "wszystkie pliki"
+	"allFiles": "wszystkie pliki",
+	"deleteMode": {
+		"title": "Usuń tryb",
+		"message": "Czy na pewno chcesz usunąć tryb \"{{modeName}}\"?",
+		"rulesFolder": "Ten tryb ma folder z regułami w {{folderPath}}, który również zostanie usunięty.",
+		"descriptionNoRules": "Czy na pewno chcesz usunąć ten niestandardowy tryb?",
+		"confirm": "Usuń",
+		"cancel": "Anuluj"
+	}
 }

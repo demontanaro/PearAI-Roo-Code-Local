@@ -2,7 +2,6 @@ import * as path from "path"
 import os from "os"
 import * as vscode from "vscode"
 
-
 /*
 The Node.js 'path' module resolves and normalizes paths differently depending on the platform:
 - On Windows, it uses backslashes (\) as the default path separator.
@@ -25,7 +24,7 @@ to ensure correct behavior on all platforms. The toPosixPath and arePathsEqual f
 primarily used for presentation and comparison purposes, not for actual file system operations.
 
 Observations:
-- Macos isn't so flexible with mixed separators, whereas windows can handle both. ("Node.js does automatically handle path separators on Windows, converting forward slashes to backslashes as needed. However, on macOS and other Unix-like systems, the path separator is always a forward slash (/), and backslashes are treated as regular characters.")
+- macOS isn't so flexible with mixed separators, whereas Windows can handle both. ("Node.js does automatically handle path separators on Windows, converting forward slashes to backslashes as needed. However, on macOS and other Unix-like systems, the path separator is always a forward slash (/), and backslashes are treated as regular characters.")
 */
 
 function toPosixPath(p: string) {
@@ -81,7 +80,12 @@ function normalizePath(p: string): string {
 }
 
 export function getReadablePath(cwd: string, relPath?: string): string {
-	relPath = relPath || ""
+	// If relPath is undefined, return empty string instead of allowing path.resolve
+	// to return cwd (which would then show misleading cwd basename in UI)
+	if (relPath === undefined) {
+		return ""
+	}
+
 	// path.resolve is flexible in that it will resolve relative paths like '../../' to the cwd and even ignore the cwd if the relPath is actually an absolute path
 	const absolutePath = path.resolve(cwd, relPath)
 	if (arePathsEqual(cwd, path.join(os.homedir(), "Desktop"))) {
@@ -115,4 +119,19 @@ export const getWorkspacePath = (defaultCwdPath = "") => {
 		return workspaceFolder?.uri.fsPath || cwdPath
 	}
 	return cwdPath
+}
+
+export const getWorkspacePathForContext = (contextPath?: string): string => {
+	// If context path provided, find its workspace
+	if (contextPath) {
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(contextPath))
+		if (workspaceFolder) {
+			return workspaceFolder.uri.fsPath
+		}
+		// Debug logging when falling back
+		console.debug(`[CodeIndex] No workspace found for context path: ${contextPath}, falling back to default`)
+	}
+
+	// Fall back to current behavior
+	return getWorkspacePath()
 }

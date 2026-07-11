@@ -1,11 +1,17 @@
 import { memo, useEffect, useRef, useCallback, useState } from "react"
 import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
-import { getHighlighter, isLanguageLoaded, normalizeLanguage, ExtendedLanguage } from "@src/utils/highlighter"
-import { bundledLanguages } from "shiki"
+import { getHighlighter, isLanguageLoaded, normalizeLanguage } from "@src/utils/highlighter"
 import type { ShikiTransformer } from "shiki"
+import { toJsxRuntime } from "hast-util-to-jsx-runtime"
+import { Fragment, jsx, jsxs } from "react/jsx-runtime"
+import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { StandardTooltip } from "@/components/ui"
+
 export const CODE_BLOCK_BG_COLOR = "var(--vscode-editor-background, --vscode-sideBar-background, rgb(30 30 30))"
 export const WRAPPER_ALPHA = "cc" // 80% opacity
+
 // Configuration constants
 export const WINDOW_SHADE_SETTINGS = {
 	transitionDelayS: 0.2,
@@ -26,20 +32,12 @@ minWidth: "max-content",
 interface CodeBlockProps {
 	source?: string
 	rawSource?: string // Add rawSource prop for copying raw text
-	language?: string
+	language: string
 	preStyle?: React.CSSProperties
 	initialWordWrap?: boolean
 	collapsedHeight?: number
 	initialWindowShade?: boolean
-	onLanguageChange?: (language: string) => void
 }
-
-const ButtonIcon = styled.span`
-	display: inline-block;
-	width: 1.2em;
-	text-align: center;
-	vertical-align: middle;
-`
 
 const CodeBlockButton = styled.button`
 	background: transparent;
@@ -50,15 +48,22 @@ const CodeBlockButton = styled.button`
 	margin: 0 0px;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	opacity: 0.4;
 	border-radius: 3px;
 	pointer-events: var(--copy-button-events, none);
 	margin-left: 4px;
 	height: 24px;
+	width: 24px;
 
 	&:hover {
 		background: var(--vscode-toolbar-hoverBackground);
 		opacity: 1;
+	}
+
+	/* Style for Lucide icons to ensure consistent sizing and positioning */
+	svg {
+		display: block;
 	}
 `
 
@@ -67,7 +72,7 @@ const CodeBlockButtonWrapper = styled.div`
 	top: var(--copy-button-top);
 	right: var(--copy-button-right, 8px);
 	height: auto;
-	z-index: 100;
+	z-index: 40;
 	background: ${CODE_BLOCK_BG_COLOR}${WRAPPER_ALPHA};
 	overflow: visible;
 	pointer-events: none;
@@ -93,7 +98,6 @@ const CodeBlockButtonWrapper = styled.div`
 const CodeBlockContainer = styled.div`
 	position: relative;
 	overflow: hidden;
-	border-bottom: 4px solid var(--vscode-sideBar-background);
 	background-color: ${CODE_BLOCK_BG_COLOR};
 
 	${CodeBlockButtonWrapper} {
@@ -119,9 +123,8 @@ export const StyledPre = styled.div<{
 	max-height: ${({ windowshade, collapsedHeight }) =>
 		windowshade === "true" ? `${collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight}px` : "none"};
 	overflow-y: auto;
-	padding: 10px;
-	// transition: max-height ${WINDOW_SHADE_SETTINGS.transitionDelayS} ease-out;
-	border-radius: 5px;
+	padding: 8px 3px;
+	border-radius: 6px;
 	${({ preStyle }) => preStyle && { ...preStyle }}
 
 	pre {
@@ -135,11 +138,11 @@ export const StyledPre = styled.div<{
 
 	pre,
 	code {
-		/* Undefined wordwrap defaults to true (pre-wrap) behavior */
+		/* Undefined wordwrap defaults to true (pre-wrap) behavior. */
 		white-space: ${({ wordwrap }) => (wordwrap === "false" ? "pre" : "pre-wrap")};
 		word-break: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "normal")};
 		overflow-wrap: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "break-word")};
-		font-size: var(--vscode-editor-font-size, var(--vscode-font-size, 12px));
+		font-size: 0.95em;
 		font-family: var(--vscode-editor-font-family);
 	}
 
@@ -162,52 +165,6 @@ export const StyledPre = styled.div<{
 	}
 `
 
-const LanguageSelect = styled.select`
-	font-size: 12px;
-	color: var(--vscode-foreground);
-	opacity: 0.4;
-	font-family: monospace;
-	appearance: none;
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	padding: 4px;
-	margin: 0;
-	vertical-align: middle;
-	height: 24px;
-
-	& option {
-		background: var(--vscode-editor-background);
-		color: var(--vscode-foreground);
-		padding: 0;
-		margin: 0;
-	}
-
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--vscode-scrollbarSlider-background);
-	}
-
-	&::-webkit-scrollbar-track {
-		background: var(--vscode-editor-background);
-	}
-
-	&:hover {
-		opacity: 1;
-		background: var(--vscode-toolbar-hoverBackground);
-		border-radius: 3px;
-	}
-
-	&:focus {
-		opacity: 1;
-		outline: none;
-		border-radius: 3px;
-	}
-`
-
 const CodeBlock = memo(
 	({
 		source,
@@ -217,38 +174,47 @@ const CodeBlock = memo(
 		initialWordWrap = true,
 		initialWindowShade = true,
 		collapsedHeight,
-		onLanguageChange,
 	}: CodeBlockProps) => {
-		const [wordWrap, setWordWrap] = useState(initialWordWrap)
+		// Use word wrap from props, default to true
+		const wordWrap = initialWordWrap
 		const [windowShade, setWindowShade] = useState(initialWindowShade)
-		const [currentLanguage, setCurrentLanguage] = useState<ExtendedLanguage>(() => normalizeLanguage(language))
-		const userChangedLanguageRef = useRef(false)
-		const [highlightedCode, setHighlightedCode] = useState<string>("")
+		const currentLanguage = normalizeLanguage(language)
+		const [highlightedCode, setHighlightedCode] = useState<React.ReactNode>(null)
 		const [showCollapseButton, setShowCollapseButton] = useState(true)
 		const codeBlockRef = useRef<HTMLDivElement>(null)
 		const preRef = useRef<HTMLDivElement>(null)
 		const copyButtonWrapperRef = useRef<HTMLDivElement>(null)
 		const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard()
+		const { t } = useAppTranslation()
+		const isMountedRef = useRef(true)
+		const buttonPositionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+		const collapseTimeout1Ref = useRef<NodeJS.Timeout | null>(null)
+		const collapseTimeout2Ref = useRef<NodeJS.Timeout | null>(null)
 
-		// Update current language when prop changes, but only if user hasn't made a selection
+		// Syntax highlighting with cached Shiki instance and mounted state management
 		useEffect(() => {
-			const normalizedLang = normalizeLanguage(language)
-			if (normalizedLang !== currentLanguage && !userChangedLanguageRef.current) {
-				setCurrentLanguage(normalizedLang)
-			}
-		}, [language, currentLanguage])
+			// Set mounted state at the beginning of this effect
+			isMountedRef.current = true
 
-		// Syntax highlighting with cached Shiki instance
-		useEffect(() => {
-			const fallback = `<pre style="padding: 0; margin: 0;"><code class="hljs language-${currentLanguage || "txt"}">${source || ""}</code></pre>`
+			// Create a safe fallback using React elements instead of HTML string
+			const fallback = (
+				<pre style={{ padding: 0, margin: 0 }}>
+					<code className={`hljs language-${currentLanguage || "txt"}`}>{source || ""}</code>
+				</pre>
+			)
+
 			const highlight = async () => {
-				// Show plain text if language needs to be loaded
+				// Show plain text if language needs to be loaded.
 				if (currentLanguage && !isLanguageLoaded(currentLanguage)) {
-					setHighlightedCode(fallback)
+					if (isMountedRef.current) {
+						setHighlightedCode(fallback)
+					}
 				}
 
 				const highlighter = await getHighlighter(currentLanguage)
-				const html = await highlighter.codeToHtml(source || "", {
+				if (!isMountedRef.current) return
+
+				const hast = await highlighter.codeToHast(source || "", {
 					lang: currentLanguage || "txt",
 					theme: document.body.className.toLowerCase().includes("light") ? "github-light" : "github-dark",
 					transformers: [
@@ -270,29 +236,68 @@ const CodeBlock = memo(
 						},
 					] as ShikiTransformer[],
 				})
-				setHighlightedCode(html)
+				if (!isMountedRef.current) return
+
+				// Convert HAST to React elements using hast-util-to-jsx-runtime
+				// This approach eliminates XSS vulnerabilities by avoiding dangerouslySetInnerHTML
+				// while maintaining the exact same visual output and syntax highlighting
+				try {
+					const reactElement = toJsxRuntime(hast, {
+						Fragment,
+						jsx,
+						jsxs,
+						// Don't override components - let them render as-is to maintain exact output
+					})
+
+					if (isMountedRef.current) {
+						setHighlightedCode(reactElement)
+					}
+				} catch (error) {
+					console.error("[CodeBlock] Error converting HAST to JSX:", error)
+					if (isMountedRef.current) {
+						setHighlightedCode(fallback)
+					}
+				}
 			}
 
 			highlight().catch((e) => {
 				console.error("[CodeBlock] Syntax highlighting error:", e, "\nStack trace:", e.stack)
-				setHighlightedCode(fallback)
+				if (isMountedRef.current) {
+					setHighlightedCode(fallback)
+				}
 			})
+
+			// Cleanup function - manage mounted state and clear all timeouts
+			return () => {
+				isMountedRef.current = false
+				if (buttonPositionTimeoutRef.current) {
+					clearTimeout(buttonPositionTimeoutRef.current)
+					buttonPositionTimeoutRef.current = null
+				}
+				if (collapseTimeout1Ref.current) {
+					clearTimeout(collapseTimeout1Ref.current)
+					collapseTimeout1Ref.current = null
+				}
+				if (collapseTimeout2Ref.current) {
+					clearTimeout(collapseTimeout2Ref.current)
+					collapseTimeout2Ref.current = null
+				}
+			}
 		}, [source, currentLanguage, collapsedHeight])
 
 		// Check if content height exceeds collapsed height whenever content changes
 		useEffect(() => {
 			const codeBlock = codeBlockRef.current
+
 			if (codeBlock) {
 				const actualHeight = codeBlock.scrollHeight
 				setShowCollapseButton(actualHeight >= WINDOW_SHADE_SETTINGS.collapsedHeight)
 			}
 		}, [highlightedCode])
 
-		// Ref to track if user was scrolled up *before* the source update potentially changes scrollHeight
+		// Ref to track if user was scrolled up *before* the source update
+		// potentially changes scrollHeight
 		const wasScrolledUpRef = useRef(false)
-
-		// Ref to track if outer container was near bottom
-		const outerContainerNearBottomRef = useRef(false)
 
 		// Effect to listen to scroll events and update the ref
 		useEffect(() => {
@@ -315,27 +320,6 @@ const CodeBlock = memo(
 			}
 		}, []) // Empty dependency array: runs once on mount
 
-		// Effect to track outer container scroll position
-		useEffect(() => {
-			const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-			if (!scrollContainer) return
-
-			const handleOuterScroll = () => {
-				const isAtBottom =
-					Math.abs(scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight) <
-					SCROLL_SNAP_TOLERANCE
-				outerContainerNearBottomRef.current = isAtBottom
-			}
-
-			scrollContainer.addEventListener("scroll", handleOuterScroll, { passive: true })
-			// Initial check
-			handleOuterScroll()
-
-			return () => {
-				scrollContainer.removeEventListener("scroll", handleOuterScroll)
-			}
-		}, []) // Empty dependency array: runs once on mount
-
 		// Store whether we should scroll after highlighting completes
 		const shouldScrollAfterHighlightRef = useRef(false)
 
@@ -352,16 +336,24 @@ const CodeBlock = memo(
 		const updateCodeBlockButtonPosition = useCallback((forceHide = false) => {
 			const codeBlock = codeBlockRef.current
 			const copyWrapper = copyButtonWrapperRef.current
-			if (!codeBlock) return
+
+			if (!codeBlock) {
+				return
+			}
 
 			const rectCodeBlock = codeBlock.getBoundingClientRect()
 			const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-			if (!scrollContainer) return
+
+			if (!scrollContainer) {
+				return
+			}
 
 			// Get wrapper height dynamically
 			let wrapperHeight
+
 			if (copyWrapper) {
 				const copyRect = copyWrapper.getBoundingClientRect()
+
 				// If height is 0 due to styling, estimate from children
 				if (copyRect.height > 0) {
 					wrapperHeight = copyRect.height
@@ -436,8 +428,15 @@ const CodeBlock = memo(
 		// Update button position and scroll when highlightedCode changes
 		useEffect(() => {
 			if (highlightedCode) {
+				// Clear any existing timeout before setting a new one
+				if (buttonPositionTimeoutRef.current) {
+					clearTimeout(buttonPositionTimeoutRef.current)
+				}
 				// Update button position
-				setTimeout(updateCodeBlockButtonPosition, 0)
+				buttonPositionTimeoutRef.current = setTimeout(() => {
+					updateCodeBlockButtonPosition()
+					buttonPositionTimeoutRef.current = null // Optional: Clear ref after execution
+				}, 0)
 
 				// Scroll to bottom if needed (immediately after Shiki updates)
 				if (shouldScrollAfterHighlightRef.current) {
@@ -447,17 +446,17 @@ const CodeBlock = memo(
 						wasScrolledUpRef.current = false
 					}
 
-					// Also scroll outer container if it was near bottom
-					if (outerContainerNearBottomRef.current) {
-						const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-						if (scrollContainer) {
-							scrollContainer.scrollTop = scrollContainer.scrollHeight
-							outerContainerNearBottomRef.current = true
-						}
-					}
+					// Outer container scrolling is handled by Virtuoso's followOutput
+					// and ChatView's handleRowHeightChange — no direct DOM manipulation needed.
 
 					// Reset the flag
 					shouldScrollAfterHighlightRef.current = false
+				}
+			}
+			// Cleanup function for this effect
+			return () => {
+				if (buttonPositionTimeoutRef.current) {
+					clearTimeout(buttonPositionTimeoutRef.current)
 				}
 			}
 		}, [highlightedCode, updateCodeBlockButtonPosition])
@@ -604,118 +603,103 @@ const CodeBlock = memo(
 
 		return (
 			<CodeBlockContainer ref={codeBlockRef}>
-				<StyledPre
-					ref={preRef}
+				<MemoizedStyledPre
+					preRef={preRef}
 					preStyle={preStyle}
-					wordwrap={wordWrap ? "true" : "false"}
-					windowshade={windowShade ? "true" : "false"}
+					wordWrap={wordWrap}
+					windowShade={windowShade}
 					collapsedHeight={collapsedHeight}
-					onMouseDown={() => updateCodeBlockButtonPosition(true)}
-					onMouseUp={() => updateCodeBlockButtonPosition(false)}>
-					<div dangerouslySetInnerHTML={{ __html: highlightedCode }} />
-				</StyledPre>
+					highlightedCode={highlightedCode}
+					updateCodeBlockButtonPosition={updateCodeBlockButtonPosition}
+				/>
 				{!isSelecting && (
 					<CodeBlockButtonWrapper
 						ref={copyButtonWrapperRef}
 						onMouseOver={() => updateCodeBlockButtonPosition()}
 						style={{ gap: 0 }}>
-						{language && (
-							<LanguageSelect
-								value={currentLanguage}
-								style={{
-									alignContent: "middle",
-									width: `${Math.max(3, (currentLanguage?.length || 5) + 1)}ch`,
-									textAlign: "right",
-									marginRight: 0,
-								}}
-								onClick={(e) => {
-									e.currentTarget.focus()
-								}}
-								onChange={(e) => {
-									const newLang = normalizeLanguage(e.target.value)
-									userChangedLanguageRef.current = true
-									setCurrentLanguage(newLang)
-									if (onLanguageChange) {
-										onLanguageChange(newLang)
-									}
-								}}>
-								{
-									// Display original language at top of list for quick selection
-									language && (
-										<option
-											value={normalizeLanguage(language)}
-											style={{ fontWeight: "bold", textAlign: "left", fontSize: "1.2em" }}>
-											{normalizeLanguage(language)}
-										</option>
-									)
-								}
-								{
-									// Display all available languages in alphabetical order
-									Object.keys(bundledLanguages)
-										.sort()
-										.map((lang) => {
-											const normalizedLang = normalizeLanguage(lang)
-											return (
-												<option
-													key={normalizedLang}
-													value={normalizedLang}
-													style={{
-														fontWeight:
-															normalizedLang === currentLanguage ? "bold" : "normal",
-														textAlign: "left",
-														fontSize:
-															normalizedLang === currentLanguage ? "1.2em" : "inherit",
-													}}>
-													{normalizedLang}
-												</option>
-											)
-										})
-								}
-							</LanguageSelect>
-						)}
 						{showCollapseButton && (
-							<CodeBlockButton
-								onClick={() => {
-									// Get the current code block element and scrollable container
-									const codeBlock = codeBlockRef.current
-									const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
-									if (!codeBlock || !scrollContainer) return
+							<StandardTooltip
+								content={t(`chat:codeblock.tooltips.${windowShade ? "expand" : "collapse"}`)}
+								side="top">
+								<CodeBlockButton
+									onClick={() => {
+										// Get the current code block element
+										const codeBlock = codeBlockRef.current // Capture ref early
+										// Toggle window shade state
+										setWindowShade(!windowShade)
 
-									// Toggle window shade state
-									setWindowShade(!windowShade)
+										// Clear any previous timeouts
+										if (collapseTimeout1Ref.current) clearTimeout(collapseTimeout1Ref.current)
+										if (collapseTimeout2Ref.current) clearTimeout(collapseTimeout2Ref.current)
 
-									// After UI updates, ensure code block is visible and update button position
-									setTimeout(
-										() => {
-											codeBlock.scrollIntoView({ behavior: "smooth", block: "nearest" })
+										// After UI updates, ensure code block is visible and update button position
+										collapseTimeout1Ref.current = setTimeout(
+											() => {
+												if (codeBlock) {
+													// Check if codeBlock element still exists
+													codeBlock.scrollIntoView({ behavior: "smooth", block: "nearest" })
 
-											// Wait for scroll to complete before updating button position
-											setTimeout(() => {
-												updateCodeBlockButtonPosition()
-											}, 50)
-										},
-										WINDOW_SHADE_SETTINGS.transitionDelayS * 1000 + 50,
-									)
-								}}
-								title={`${windowShade ? "Expand" : "Collapse"} code block`}>
-								<ButtonIcon style={{ fontSize: "16px" }}>{windowShade ? "⌄" : "⌃"}</ButtonIcon>
-							</CodeBlockButton>
+													// Wait for scroll to complete before updating button position
+													collapseTimeout2Ref.current = setTimeout(() => {
+														// updateCodeBlockButtonPosition itself should also check for refs if needed
+														updateCodeBlockButtonPosition()
+														collapseTimeout2Ref.current = null
+													}, 50)
+												}
+												collapseTimeout1Ref.current = null
+											},
+											WINDOW_SHADE_SETTINGS.transitionDelayS * 1000 + 50,
+										)
+									}}>
+									{windowShade ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+								</CodeBlockButton>
+							</StandardTooltip>
 						)}
-						<CodeBlockButton
-							onClick={() => setWordWrap(!wordWrap)}
-							title={`${wordWrap ? "Disable" : "Enable"} word wrap`}>
-							<ButtonIcon style={{ fontSize: "16px", fontWeight: 900 }}>
-								{wordWrap ? "⟼" : "⤸"}
-							</ButtonIcon>
-						</CodeBlockButton>
-						<CodeBlockButton onClick={handleCopy} title="Copy code">
-							<ButtonIcon className={`codicon codicon-${showCopyFeedback ? "check" : "copy"}`} />
-						</CodeBlockButton>
+						<StandardTooltip content={t("chat:codeblock.tooltips.copy_code")} side="top">
+							<CodeBlockButton onClick={handleCopy}>
+								{showCopyFeedback ? <Check size={16} /> : <Copy size={16} />}
+							</CodeBlockButton>
+						</StandardTooltip>
 					</CodeBlockButtonWrapper>
 				)}
 			</CodeBlockContainer>
 		)
 	},
+)
+
+// Memoized content component to prevent unnecessary re-renders of highlighted code
+const MemoizedCodeContent = memo(({ children }: { children: React.ReactNode }) => <>{children}</>)
+
+// Memoized StyledPre component
+const MemoizedStyledPre = memo(
+	({
+		preRef,
+		preStyle,
+		wordWrap,
+		windowShade,
+		collapsedHeight,
+		highlightedCode,
+		updateCodeBlockButtonPosition,
+	}: {
+		preRef: React.RefObject<HTMLDivElement>
+		preStyle?: React.CSSProperties
+		wordWrap: boolean
+		windowShade: boolean
+		collapsedHeight?: number
+		highlightedCode: React.ReactNode
+		updateCodeBlockButtonPosition: (forceHide?: boolean) => void
+	}) => (
+		<StyledPre
+			ref={preRef}
+			preStyle={preStyle}
+			wordwrap={wordWrap ? "true" : "false"}
+			windowshade={windowShade ? "true" : "false"}
+			collapsedHeight={collapsedHeight}
+			onMouseDown={() => updateCodeBlockButtonPosition(true)}
+			onMouseUp={() => updateCodeBlockButtonPosition(false)}>
+			<MemoizedCodeContent>{highlightedCode}</MemoizedCodeContent>
+		</StyledPre>
+	),
 )
 
 export default CodeBlock

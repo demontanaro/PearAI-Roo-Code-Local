@@ -1,9 +1,4 @@
 {
-	"greeting": "¡Hola, soy Roo!",
-	"introduction": "<strong>PearAI Agent (Powered by Roo Code / Cline) es el principal agente de codificación autónomo.</strong> Prepárate para arquitectar, codificar, depurar y aumentar tu productividad como nunca antes. Para continuar, PearAI Agent (Powered by Roo Code / Cline) requiere una clave API.",
-	"notice": "Para comenzar, esta extensión necesita un proveedor de API.",
-	"start": "¡Vamos!",
-	"chooseProvider": "Elige un proveedor de API para comenzar:",
 	"routers": {
 		"requesty": {
 			"description": "Tu router LLM optimizado",
@@ -13,16 +8,22 @@
 			"description": "Una interfaz unificada para LLMs"
 		}
 	},
-	"startRouter": "Configuración rápida a través de un router",
-	"startCustom": "Usa tu propia clave API",
-	"telemetry": {
-		"title": "Ayuda a mejorar PearAI Agent (Powered by Roo Code / Cline)",
-		"anonymousTelemetry": "Envía datos de uso y errores anónimos para ayudarnos a corregir errores y mejorar la extensión. Nunca se envía código, texto o información personal.",
-		"changeSettings": "Siempre puedes cambiar esto en la parte inferior de la <settingsLink>configuración</settingsLink>",
-		"settings": "configuración",
-		"allow": "Permitir",
-		"deny": "Denegar"
+	"landing": {
+		"greeting": "¡Bienvenido a Roo Code!",
+		"introduction": "Con una variedad de Modos integrados y extensibles, Roo Code te permite planificar, arquitectar, codificar, depurar y aumentar tu productividad como nunca antes.",
+		"getStarted": "Get Started"
 	},
-	"or": "o",
+	"providerSignup": {
+		"heading": "Elige tu proveedor",
+		"chooseProvider": "Roo necesita un proveedor de LLM para funcionar. Elige uno para comenzar, puedes añadir más después.",
+		"learnMore": "Más información",
+		"useAnotherProvider": "Proveedor de terceros",
+		"useAnotherProviderDescription": "Introduce una clave API y comienza.",
+		"noApiKeys": "¿No quieres lidiar con claves API y cuentas separadas?",
+		"goBack": "Atrás",
+		"finish": "Finalizar"
+	},
+	"startRouter": "Recomendamos usar un router LLM:",
+	"startCustom": "O puedes traer tu propia clave API:",
 	"importSettings": "Importar configuración"
 }
