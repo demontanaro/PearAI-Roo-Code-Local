@@ -1,113 +1,81 @@
-import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
-import { memo } from "react"
-import { useAppTranslation } from "@/i18n/TranslationContext"
+import { memo, type ReactNode, useState } from "react"
 import { Trans } from "react-i18next"
+import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+
+import { Package } from "@roo/package"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { vscode } from "@src/utils/vscode"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@src/components/ui"
 
 interface AnnouncementProps {
 	hideAnnouncement: () => void
 }
-/*
-You must update the latestAnnouncementId in ClineProvider for new announcements to show to users. This new id will be compared with whats in state for the 'last announcement shown', and if it's different then the announcement will render. As soon as an announcement is shown, the id will be updated in state. This ensures that announcements are not shown more than once, even if the user doesn't close it themselves.
-*/
+
+/**
+ * You must update the `latestAnnouncementId` in ClineProvider for new
+ * announcements to show to users. This new id will be compared with what's in
+ * state for the 'last announcement shown', and if it's different then the
+ * announcement will render. As soon as an announcement is shown, the id will be
+ * updated in state. This ensures that announcements are not shown more than
+ * once, even if the user doesn't close it themselves.
+ */
+
 const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 	const { t } = useAppTranslation()
-
-	const discordLink = (
-		<VSCodeLink
-			href="https://discord.gg/roocode"
-			onClick={(e) => {
-				e.preventDefault()
-				window.postMessage(
-					{ type: "action", action: "openExternal", data: { url: "https://discord.gg/roocode" } },
-					"*",
-				)
-			}}>
-			Discord
-		</VSCodeLink>
-	)
-
-	const redditLink = (
-		<VSCodeLink
-			href="https://reddit.com/r/RooCode"
-			onClick={(e) => {
-				e.preventDefault()
-				window.postMessage(
-					{ type: "action", action: "openExternal", data: { url: "https://reddit.com/r/RooCode" } },
-					"*",
-				)
-			}}>
-			Reddit
-		</VSCodeLink>
-	)
+	const [open, setOpen] = useState(true)
 
 	return (
-		<div className="flex flex-col justify-center absolute top-0 bottom-0 left-0 right-0 z-50 p-10 bg-black/50">
-			<div
-				style={{
-					backgroundColor: "var(--vscode-editor-background)",
-					borderRadius: "3px",
-					padding: "12px 16px",
-					margin: "5px 15px 5px 15px",
-					position: "relative",
-					flexShrink: 0,
-				}}>
-				<VSCodeButton
-					appearance="icon"
-					onClick={hideAnnouncement}
-					title={t("chat:announcement.hideButton")}
-					style={{ position: "absolute", top: "8px", right: "8px" }}>
-					<span className="codicon codicon-close"></span>
-				</VSCodeButton>
-				<h2 style={{ margin: "0 0 8px" }}>{t("chat:announcement.title")}</h2>
+		<Dialog
+			open={open}
+			onOpenChange={(open) => {
+				setOpen(open)
 
-				<p style={{ margin: "5px 0px" }}>{t("chat:announcement.description")}</p>
-
-				<h3 style={{ margin: "12px 0 5px", fontSize: "14px" }}>{t("chat:announcement.whatsNew")}</h3>
-				<ul style={{ margin: "5px 0" }}>
-					<li>
-						•{" "}
+				if (!open) {
+					hideAnnouncement()
+				}
+			}}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{t("chat:announcement.finalRelease.title", { version: Package.version })}</DialogTitle>
+				</DialogHeader>
+				<div className="text-sm leading-relaxed text-vscode-descriptionForeground">
+					<p className="mt-0">
 						<Trans
-							i18nKey="chat:announcement.feature1"
+							i18nKey="chat:announcement.finalRelease.intro"
 							components={{
-								bold: <b />,
-								code: <code />,
+								announcementLink: (
+									<ExternalLink href="https://x.com/mattrubens/status/2046636598859559114" />
+								),
+								roomoteLink: <ExternalLink href="https://roomote.dev/" />,
 							}}
 						/>
-					</li>
-					<li>
-						•{" "}
+					</p>
+					<p>{t("chat:announcement.finalRelease.continuity")}</p>
+					<p>
 						<Trans
-							i18nKey="chat:announcement.feature2"
+							i18nKey="chat:announcement.finalRelease.alternatives"
 							components={{
-								bold: <b />,
-								code: <code />,
+								zooCodeLink: <ExternalLink href="https://github.com/Zoo-Code-Org/Zoo-Code/" />,
+								clineLink: <ExternalLink href="https://cline.bot/" />,
 							}}
 						/>
-					</li>
-					<li>
-						•{" "}
-						<Trans
-							i18nKey="chat:announcement.feature3"
-							components={{
-								bold: <b />,
-								code: <code />,
-							}}
-						/>
-					</li>
-				</ul>
-
-				<p style={{ margin: "10px 0px 0px" }}>
-					<Trans
-						i18nKey="chat:announcement.detailsDiscussLinks"
-						components={{
-							discordLink: discordLink,
-							redditLink: redditLink,
-						}}
-					/>
-				</p>
-			</div>
-		</div>
+					</p>
+					<p className="mb-0">{t("chat:announcement.finalRelease.signoff")}</p>
+				</div>
+			</DialogContent>
+		</Dialog>
 	)
 }
+
+const ExternalLink = ({ children, href }: { children?: ReactNode; href: string }) => (
+	<VSCodeLink
+		href={href}
+		onClick={(e) => {
+			e.preventDefault()
+			vscode.postMessage({ type: "openExternal", url: href })
+		}}>
+		{children}
+	</VSCodeLink>
+)
 
 export default memo(Announcement)

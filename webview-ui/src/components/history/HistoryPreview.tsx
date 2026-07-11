@@ -1,67 +1,49 @@
 import { memo } from "react"
 
-import { vscode } from "@/utils/vscode"
-import { formatLargeNumber, formatDate } from "@/utils/format"
+import { vscode } from "@src/utils/vscode"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
 
-import { CopyButton } from "./CopyButton"
 import { useTaskSearch } from "./useTaskSearch"
-
-import { Coins } from "lucide-react"
+import { useGroupedTasks } from "./useGroupedTasks"
+import TaskGroupItem from "./TaskGroupItem"
 
 const HistoryPreview = () => {
-	const { tasks, showAllWorkspaces } = useTaskSearch()
+	const { tasks, searchQuery } = useTaskSearch()
+	const { groups, toggleExpand } = useGroupedTasks(tasks, searchQuery)
+	const { t } = useAppTranslation()
+
+	const handleViewAllHistory = () => {
+		vscode.postMessage({ type: "switchTab", tab: "history" })
+	}
+
+	// Show up to 4 groups (parent + subtasks count as 1 block)
+	const displayGroups = groups.slice(0, 4)
 
 	return (
-		<>
-			<div className="flex flex-col gap-3">
-				{tasks.length !== 0 && (
-					<>
-						{tasks.slice(0, 3).map((item) => (
-							<div
-								key={item.id}
-								className="bg-vscode-editor-background rounded relative overflow-hidden cursor-pointer border border-vscode-toolbar-hoverBackground/30 hover:border-vscode-toolbar-hoverBackground/60"
-								onClick={() => vscode.postMessage({ type: "showTaskWithId", text: item.id })}>
-								<div className="flex flex-col gap-2 p-3 pt-1">
-									<div className="flex justify-between items-center">
-										<span className="text-xs font-medium text-vscode-descriptionForeground uppercase">
-											{formatDate(item.ts)}
-										</span>
-										<CopyButton itemTask={item.task} />
-									</div>
-									<div
-										className="text-vscode-foreground overflow-hidden whitespace-pre-wrap"
-										style={{
-											display: "-webkit-box",
-											WebkitLineClamp: 2,
-											WebkitBoxOrient: "vertical",
-											wordBreak: "break-word",
-											overflowWrap: "anywhere",
-										}}>
-										{item.task}
-									</div>
-									<div className="flex flex-row gap-2 text-xs text-vscode-descriptionForeground">
-										<span>↑ {formatLargeNumber(item.tokensIn || 0)}</span>
-										<span>↓ {formatLargeNumber(item.tokensOut || 0)}</span>
-										{!!item.totalCost && (
-											<span>
-												<Coins className="inline-block size-[1em]" />{" "}
-												{"$" + item.totalCost?.toFixed(2)}
-											</span>
-										)}
-									</div>
-									{showAllWorkspaces && item.workspace && (
-										<div className="flex flex-row gap-1 text-vscode-descriptionForeground text-xs mt-1">
-											<span className="codicon codicon-folder scale-80" />
-											<span>{item.workspace}</span>
-										</div>
-									)}
-								</div>
-							</div>
-						))}
-					</>
-				)}
+		<div className="flex flex-col gap-1">
+			<div className="flex flex-wrap items-center justify-between mt-4 mb-2">
+				<h2 className="font-semibold text-lg grow m-0">{t("history:recentTasks")}</h2>
+				<button
+					onClick={handleViewAllHistory}
+					className="text-base text-vscode-descriptionForeground hover:text-vscode-textLink-foreground transition-colors cursor-pointer"
+					aria-label={t("history:viewAllHistory")}>
+					{t("history:viewAllHistory")}
+				</button>
 			</div>
-		</>
+			{displayGroups.length !== 0 && (
+				<>
+					{displayGroups.map((group) => (
+						<TaskGroupItem
+							key={group.parent.id}
+							group={group}
+							variant="compact"
+							onToggleExpand={() => toggleExpand(group.parent.id)}
+							onToggleSubtaskExpand={toggleExpand}
+						/>
+					))}
+				</>
+			)}
+		</div>
 	)
 }
 

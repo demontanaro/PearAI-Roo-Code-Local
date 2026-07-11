@@ -1,17 +1,19 @@
-import { SECRET_STATE_KEYS, ProviderSettings } from "../schemas"
+import { SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS, ProviderSettings } from "@roo-code/types"
 
 export function checkExistKey(config: ProviderSettings | undefined) {
 	if (!config) {
 		return false
 	}
 
-	// Special case for providers that don't need configuration in the apiConfiguration object
-	if (config.apiProvider === "human-relay" || config.apiProvider === "fake-ai" || config.apiProvider === "pearai") {
+	// Special case for fake-ai, openai-codex, qwen-code, and roo providers which don't need any configuration.
+	if (config.apiProvider && ["fake-ai", "openai-codex", "qwen-code"].includes(config.apiProvider)) {
 		return true
 	}
 
 	// Check all secret keys from the centralized SECRET_STATE_KEYS array.
-	const hasSecretKey = SECRET_STATE_KEYS.some((key) => config[key] !== undefined)
+	// Filter out keys that are not part of ProviderSettings (global secrets are stored separately)
+	const providerSecretKeys = SECRET_STATE_KEYS.filter((key) => !GLOBAL_SECRET_KEYS.includes(key as any))
+	const hasSecretKey = providerSecretKeys.some((key) => config[key as keyof ProviderSettings] !== undefined)
 
 	// Check additional non-secret configuration properties
 	const hasOtherConfig = [

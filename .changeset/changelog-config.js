@@ -1,11 +1,9 @@
-// Half-works to simplify the format but needs 'overwrite_changeset_changelog.py' in GHA to finish formatting
-
 const getReleaseLine = async (changeset) => {
-	const [firstLine] = changeset.summary
+	const lines = changeset.summary
 		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean)
-	return `- ${firstLine}`
+	return lines.map((line) => (line.startsWith("- ") ? line : `- ${line}`)).join("\n")
 }
 
 const getDependencyReleaseLine = async () => {

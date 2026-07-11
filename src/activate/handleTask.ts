@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { COMMAND_IDS } from "../core/CodeActionProvider"
+import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { t } from "../i18n"
 
@@ -15,9 +15,9 @@ export const handleNewTask = async (params: { prompt?: string } | null | undefin
 	}
 
 	if (!prompt) {
-		await vscode.commands.executeCommand("roo-cline.SidebarProvider.focus")
+		await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
 		return
 	}
 
-	await ClineProvider.handleCodeAction(COMMAND_IDS.NEW_TASK, "NEW_TASK", { userInput: prompt })
+	await ClineProvider.handleCodeAction("newTask", "NEW_TASK", { userInput: prompt })
 }

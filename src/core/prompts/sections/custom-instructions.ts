@@ -1,9 +1,19 @@
 import fs from "fs/promises"
 import path from "path"
-
-import { LANGUAGES, isLanguage } from "../../../shared/language"
+import * as os from "os"
 import { Dirent } from "fs"
-import { AGENT_RULES_DIR } from "../../../shared/constants"
+
+import { isLanguage } from "@roo-code/types"
+
+import type { SystemPromptSettings } from "../types"
+
+import { LANGUAGES } from "../../../shared/language"
+import {
+	getRooDirectoriesForCwd,
+	getAllRooDirectoriesForCwd,
+	getAgentsDirectoriesForCwd,
+	getGlobalRooDirectory,
+} from "../../../services/roo-config"
 
 /**
  * Safely read a file and return its trimmed content
@@ -41,7 +51,7 @@ const MAX_DEPTH = 5
 async function resolveDirectoryEntry(
 	entry: Dirent,
 	dirPath: string,
-	filePaths: string[],
+	fileInfo: Array<{ originalPath: string; resolvedPath: string }>,
 	depth: number,
 ): Promise<void> {
 	// Avoid cyclic symlinks
@@ -51,44 +61,55 @@ async function resolveDirectoryEntry(
 
 	const fullPath = path.resolve(entry.parentPath || dirPath, entry.name)
 	if (entry.isFile()) {
-		// Regular file
-		filePaths.push(fullPath)
+		// Regular file - both original and resolved paths are the same
+		fileInfo.push({ originalPath: fullPath, resolvedPath: fullPath })
 	} else if (entry.isSymbolicLink()) {
 		// Await the resolution of the symbolic link
-		await resolveSymLink(fullPath, filePaths, depth + 1)
+		await resolveSymLink(fullPath, fileInfo, depth + 1)
 	}
 }
 
 /**
  * Recursively resolve a symbolic link and collect file paths
  */
-async function resolveSymLink(fullPath: string, filePaths: string[], depth: number): Promise<void> {
+async function resolveSymLink(
+	symlinkPath: string,
+	fileInfo: Array<{ originalPath: string; resolvedPath: string }>,
+	depth: number,
+): Promise<void> {
 	// Avoid cyclic symlinks
 	if (depth > MAX_DEPTH) {
 		return
 	}
 	try {
 		// Get the symlink target
-		const linkTarget = await fs.readlink(fullPath)
+		const linkTarget = await fs.readlink(symlinkPath)
 		// Resolve the target path (relative to the symlink location)
-		const resolvedTarget = path.resolve(path.dirname(fullPath), linkTarget)
+		const resolvedTarget = path.resolve(path.dirname(symlinkPath), linkTarget)
 
 		// Check if the target is a file
 		const stats = await fs.stat(resolvedTarget)
 		if (stats.isFile()) {
-			filePaths.push(resolvedTarget)
+			// For symlinks to files, store the symlink path as original and target as resolved
+			fileInfo.push({
+				originalPath: symlinkPath,
+				resolvedPath: resolvedTarget,
+			})
 		} else if (stats.isDirectory()) {
-			const anotherEntries = await fs.readdir(resolvedTarget, { withFileTypes: true, recursive: true })
+			const anotherEntries = await fs.readdir(resolvedTarget, {
+				withFileTypes: true,
+				recursive: true,
+			})
 			// Collect promises for recursive calls within the directory
 			const directoryPromises: Promise<void>[] = []
 			for (const anotherEntry of anotherEntries) {
-				directoryPromises.push(resolveDirectoryEntry(anotherEntry, resolvedTarget, filePaths, depth + 1))
+				directoryPromises.push(resolveDirectoryEntry(anotherEntry, resolvedTarget, fileInfo, depth + 1))
 			}
 			// Wait for all entries in the resolved directory to be processed
 			await Promise.all(directoryPromises)
 		} else if (stats.isSymbolicLink()) {
 			// Handle nested symlinks by awaiting the recursive call
-			await resolveSymLink(resolvedTarget, filePaths, depth + 1)
+			await resolveSymLink(resolvedTarget, fileInfo, depth + 1)
 		}
 	} catch (err) {
 		// Skip invalid symlinks
@@ -100,28 +121,37 @@ async function resolveSymLink(fullPath: string, filePaths: string[], depth: numb
  */
 async function readTextFilesFromDirectory(dirPath: string): Promise<Array<{ filename: string; content: string }>> {
 	try {
-		const entries = await fs.readdir(dirPath, { withFileTypes: true, recursive: true })
+		const entries = await fs.readdir(dirPath, {
+			withFileTypes: true,
+			recursive: true,
+		})
 
 		// Process all entries - regular files and symlinks that might point to files
-		const filePaths: string[] = []
+		// Store both original path (for sorting) and resolved path (for reading)
+		const fileInfo: Array<{ originalPath: string; resolvedPath: string }> = []
 		// Collect promises for the initial resolution calls
 		const initialPromises: Promise<void>[] = []
 
 		for (const entry of entries) {
-			initialPromises.push(resolveDirectoryEntry(entry, dirPath, filePaths, 0))
+			initialPromises.push(resolveDirectoryEntry(entry, dirPath, fileInfo, 0))
 		}
 
 		// Wait for all asynchronous operations (including recursive ones) to complete
 		await Promise.all(initialPromises)
 
 		const fileContents = await Promise.all(
-			filePaths.map(async (file) => {
+			fileInfo.map(async ({ originalPath, resolvedPath }) => {
 				try {
 					// Check if it's a file (not a directory)
-					const stats = await fs.stat(file)
+					const stats = await fs.stat(resolvedPath)
 					if (stats.isFile()) {
-						const content = await safeReadFile(file)
-						return { filename: file, content }
+						// Filter out cache files and system files that shouldn't be in rules
+						if (!shouldIncludeRuleFile(resolvedPath)) {
+							return null
+						}
+						const content = await safeReadFile(resolvedPath)
+						// Use resolvedPath for display to maintain existing behavior
+						return { filename: resolvedPath, content, sortKey: originalPath }
 					}
 					return null
 				} catch (err) {
@@ -130,8 +160,20 @@ async function readTextFilesFromDirectory(dirPath: string): Promise<Array<{ file
 			}),
 		)
 
-		// Filter out null values (directories or failed reads)
-		return fileContents.filter((item): item is { filename: string; content: string } => item !== null)
+		// Filter out null values (directories, failed reads, or excluded files)
+		const filteredFiles = fileContents.filter(
+			(item): item is { filename: string; content: string; sortKey: string } => item !== null,
+		)
+
+		// Sort files alphabetically by the original filename (case-insensitive) to ensure consistent order
+		// For symlinks, this will use the symlink name, not the target name
+		return filteredFiles
+			.sort((a, b) => {
+				const filenameA = path.basename(a.sortKey).toLowerCase()
+				const filenameB = path.basename(b.sortKey).toLowerCase()
+				return filenameA.localeCompare(filenameB)
+			})
+			.map(({ filename, content }) => ({ filename, content }))
 	} catch (err) {
 		return []
 	}
@@ -139,34 +181,51 @@ async function readTextFilesFromDirectory(dirPath: string): Promise<Array<{ file
 
 /**
  * Format content from multiple files with filenames as headers
+ * @param files - Array of files with filename (absolute path) and content
+ * @param cwd - Current working directory for computing relative paths
  */
-function formatDirectoryContent(dirPath: string, files: Array<{ filename: string; content: string }>): string {
+function formatDirectoryContent(files: Array<{ filename: string; content: string }>, cwd: string): string {
 	if (files.length === 0) return ""
 
-	return (
-		"\n\n" +
-		files
-			.map((file) => {
-				return `# Rules from ${file.filename}:\n${file.content}`
-			})
-			.join("\n\n")
-	)
+	return files
+		.map((file) => {
+			// Compute relative path for display
+			const displayPath = path.relative(cwd, file.filename)
+			return `# Rules from ${displayPath}:\n${file.content}`
+		})
+		.join("\n\n")
 }
 
 /**
- * Load rule files from the specified directory
+ * Load rule files from global, project-local, and optionally subfolder directories
+ * Rules are loaded in order: global first, then project-local, then subfolders (alphabetically)
+ *
+ * @param cwd - Current working directory (project root)
+ * @param enableSubfolderRules - Whether to include rules from subdirectories (default: false)
  */
-export async function loadRuleFiles(cwd: string): Promise<string> {
-	// Check for .pearai-agent/rules/ directory
-	const rooRulesDir = path.join(cwd, AGENT_RULES_DIR, "rules")
-	if (await directoryExists(rooRulesDir)) {
-		const files = await readTextFilesFromDirectory(rooRulesDir)
-		if (files.length > 0) {
-			return formatDirectoryContent(rooRulesDir, files)
+export async function loadRuleFiles(cwd: string, enableSubfolderRules: boolean = false): Promise<string> {
+	const rules: string[] = []
+	// Use recursive discovery only if enableSubfolderRules is true
+	const rooDirectories = enableSubfolderRules ? await getAllRooDirectoriesForCwd(cwd) : getRooDirectoriesForCwd(cwd)
+
+	// Check for .roo/rules/ directories in order (global, project-local, and optionally subfolders)
+	for (const rooDir of rooDirectories) {
+		const rulesDir = path.join(rooDir, "rules")
+		if (await directoryExists(rulesDir)) {
+			const files = await readTextFilesFromDirectory(rulesDir)
+			if (files.length > 0) {
+				const content = formatDirectoryContent(files, cwd)
+				rules.push(content)
+			}
 		}
 	}
 
-	// Fall back to existing behavior
+	// If we found rules in .roo/rules/ directories, return them
+	if (rules.length > 0) {
+		return "\n# Rules from .roo directories:\n\n" + rules.join("\n\n")
+	}
+
+	// Fall back to existing behavior for legacy .roorules/.clinerules files
 	const ruleFiles = [".roorules", ".clinerules"]
 
 	for (const file of ruleFiles) {
@@ -179,32 +238,192 @@ export async function loadRuleFiles(cwd: string): Promise<string> {
 	return ""
 }
 
+/**
+ * Read content from an agent rules file (AGENTS.md, AGENT.md, etc.)
+ * Handles symlink resolution.
+ *
+ * @param filePath - Full path to the agent rules file
+ * @returns File content or empty string if file doesn't exist
+ */
+async function readAgentRulesFile(filePath: string): Promise<string> {
+	let resolvedPath = filePath
+
+	// Check if file exists and handle symlinks
+	try {
+		const stats = await fs.lstat(filePath)
+		if (stats.isSymbolicLink()) {
+			// Create a temporary fileInfo array to use with resolveSymLink
+			const fileInfo: Array<{
+				originalPath: string
+				resolvedPath: string
+			}> = []
+
+			// Use the existing resolveSymLink function to handle symlink resolution
+			await resolveSymLink(filePath, fileInfo, 0)
+
+			// Extract the resolved path from fileInfo
+			if (fileInfo.length > 0) {
+				resolvedPath = fileInfo[0].resolvedPath
+			}
+		}
+	} catch (err) {
+		// If lstat fails (file doesn't exist), return empty
+		return ""
+	}
+
+	// Read the content from the resolved path
+	return safeReadFile(resolvedPath)
+}
+
+/**
+ * Load AGENTS.md or AGENT.md file from a specific directory
+ * Checks for both AGENTS.md (standard) and AGENT.md (alternative) for compatibility
+ * Also loads AGENTS.local.md for personal overrides (not checked in to version control)
+ * AGENTS.local.md can be loaded even if AGENTS.md doesn't exist
+ *
+ * @param directory - Directory to check for AGENTS.md
+ * @param showPath - Whether to include the directory path in the header
+ * @param cwd - Current working directory for computing relative paths (optional)
+ */
+async function loadAgentRulesFileFromDirectory(
+	directory: string,
+	showPath: boolean = false,
+	cwd?: string,
+): Promise<string> {
+	// Try both filenames - AGENTS.md (standard) first, then AGENT.md (alternative)
+	const filenames = ["AGENTS.md", "AGENT.md"]
+	const results: string[] = []
+	const displayPath = cwd ? path.relative(cwd, directory) : directory
+
+	for (const filename of filenames) {
+		try {
+			const agentPath = path.join(directory, filename)
+			const content = await readAgentRulesFile(agentPath)
+
+			if (content) {
+				// Compute relative path for display if cwd is provided
+				const header = showPath
+					? `# Agent Rules Standard (${filename}) from ${displayPath}:`
+					: `# Agent Rules Standard (${filename}):`
+				results.push(`${header}\n${content}`)
+
+				// Found a standard file, don't check alternative
+				break
+			}
+		} catch (err) {
+			// Silently ignore errors - agent rules files are optional
+		}
+	}
+
+	// Always try to load AGENTS.local.md for personal overrides (even if AGENTS.md doesn't exist)
+	try {
+		const localFilename = "AGENTS.local.md"
+		const localPath = path.join(directory, localFilename)
+		const localContent = await readAgentRulesFile(localPath)
+
+		if (localContent) {
+			const localHeader = showPath
+				? `# Agent Rules Local (${localFilename}) from ${displayPath}:`
+				: `# Agent Rules Local (${localFilename}):`
+			results.push(`${localHeader}\n${localContent}`)
+		}
+	} catch (err) {
+		// Silently ignore errors - local agent rules file is optional
+	}
+
+	return results.join("\n\n")
+}
+
+/**
+ * Load AGENTS.md or AGENT.md file from the project root if it exists
+ * Checks for both AGENTS.md (standard) and AGENT.md (alternative) for compatibility
+ *
+ * @deprecated Use loadAllAgentRulesFiles for loading from all directories
+ */
+async function loadAgentRulesFile(cwd: string): Promise<string> {
+	return loadAgentRulesFileFromDirectory(cwd, false, cwd)
+}
+
+/**
+ * Load all AGENTS.md files from project root and optionally subdirectories with .roo folders
+ * Returns combined content with clear path headers for each file
+ *
+ * @param cwd - Current working directory (project root)
+ * @param enableSubfolderRules - Whether to include AGENTS.md from subdirectories (default: false)
+ * @returns Combined AGENTS.md content from all locations
+ */
+async function loadAllAgentRulesFiles(cwd: string, enableSubfolderRules: boolean = false): Promise<string> {
+	const agentRules: string[] = []
+
+	// When subfolder rules are disabled, only load from root
+	if (!enableSubfolderRules) {
+		const content = await loadAgentRulesFileFromDirectory(cwd, false, cwd)
+		if (content && content.trim()) {
+			agentRules.push(content.trim())
+		}
+		return agentRules.join("\n\n")
+	}
+
+	// When enabled, load from root and all subdirectories with .roo folders
+	const directories = await getAgentsDirectoriesForCwd(cwd)
+
+	for (const directory of directories) {
+		// Show path for all directories except the root
+		const showPath = directory !== cwd
+		const content = await loadAgentRulesFileFromDirectory(directory, showPath, cwd)
+		if (content && content.trim()) {
+			agentRules.push(content.trim())
+		}
+	}
+
+	return agentRules.join("\n\n")
+}
+
 export async function addCustomInstructions(
 	modeCustomInstructions: string,
 	globalCustomInstructions: string,
 	cwd: string,
 	mode: string,
-	options: { language?: string; rooIgnoreInstructions?: string } = {},
+	options: {
+		language?: string
+		rooIgnoreInstructions?: string
+		settings?: SystemPromptSettings
+	} = {},
 ): Promise<string> {
 	const sections = []
+
+	// Get the enableSubfolderRules setting (default: false)
+	const enableSubfolderRules = options.settings?.enableSubfolderRules ?? false
 
 	// Load mode-specific rules if mode is provided
 	let modeRuleContent = ""
 	let usedRuleFile = ""
 
 	if (mode) {
-		// Check for .pearai-agent/rules-${mode}/ directory
-		const modeRulesDir = path.join(cwd, AGENT_RULES_DIR, `rules-${mode}`)
-		if (await directoryExists(modeRulesDir)) {
-			const files = await readTextFilesFromDirectory(modeRulesDir)
-			if (files.length > 0) {
-				modeRuleContent = formatDirectoryContent(modeRulesDir, files)
-				usedRuleFile = modeRulesDir
+		const modeRules: string[] = []
+		// Use recursive discovery only if enableSubfolderRules is true
+		const rooDirectories = enableSubfolderRules
+			? await getAllRooDirectoriesForCwd(cwd)
+			: getRooDirectoriesForCwd(cwd)
+
+		// Check for .roo/rules-${mode}/ directories in order (global, project-local, and optionally subfolders)
+		for (const rooDir of rooDirectories) {
+			const modeRulesDir = path.join(rooDir, `rules-${mode}`)
+			if (await directoryExists(modeRulesDir)) {
+				const files = await readTextFilesFromDirectory(modeRulesDir)
+				if (files.length > 0) {
+					const content = formatDirectoryContent(files, cwd)
+					modeRules.push(content)
+				}
 			}
 		}
 
-		// If no directory exists, fall back to existing behavior
-		if (!modeRuleContent) {
+		// If we found mode-specific rules in .roo/rules-${mode}/ directories, use them
+		if (modeRules.length > 0) {
+			modeRuleContent = "\n" + modeRules.join("\n\n")
+			usedRuleFile = `rules-${mode} directories`
+		} else {
+			// Fall back to existing behavior for legacy files
 			const rooModeRuleFile = `.roorules-${mode}`
 			modeRuleContent = await safeReadFile(path.join(cwd, rooModeRuleFile))
 			if (modeRuleContent) {
@@ -242,7 +461,7 @@ export async function addCustomInstructions(
 
 	// Add mode-specific rules first if they exist
 	if (modeRuleContent && modeRuleContent.trim()) {
-		if (usedRuleFile.includes(path.join(AGENT_RULES_DIR, `rules-${mode}`))) {
+		if (usedRuleFile.includes(path.join(".roo", `rules-${mode}`))) {
 			rules.push(modeRuleContent.trim())
 		} else {
 			rules.push(`# Rules from ${usedRuleFile}:\n${modeRuleContent}`)
@@ -253,8 +472,17 @@ export async function addCustomInstructions(
 		rules.push(options.rooIgnoreInstructions)
 	}
 
+	// Add AGENTS.md content if enabled (default: true)
+	// Load from root and optionally subdirectories with .roo folders based on enableSubfolderRules setting
+	if (options.settings?.useAgentRules !== false) {
+		const agentRulesContent = await loadAllAgentRulesFiles(cwd, enableSubfolderRules)
+		if (agentRulesContent && agentRulesContent.trim()) {
+			rules.push(agentRulesContent.trim())
+		}
+	}
+
 	// Add generic rules
-	const genericRuleContent = await loadRuleFiles(cwd)
+	const genericRuleContent = await loadRuleFiles(cwd, enableSubfolderRules)
 	if (genericRuleContent && genericRuleContent.trim()) {
 		rules.push(genericRuleContent.trim())
 	}
@@ -271,8 +499,50 @@ export async function addCustomInstructions(
 
 USER'S CUSTOM INSTRUCTIONS
 
-The following additional instructions are provided by the user, and should be followed to the best of your ability without interfering with the TOOL USE guidelines.
+The following additional instructions are provided by the user, and should be followed to the best of your ability.
 
-${joinedSections}`
+${joinedSections}
+`
 		: ""
+}
+
+/**
+ * Check if a file should be included in rule compilation.
+ * Excludes cache files and system files that shouldn't be processed as rules.
+ */
+function shouldIncludeRuleFile(filename: string): boolean {
+	const basename = path.basename(filename)
+
+	const cachePatterns = [
+		"*.DS_Store",
+		"*.bak",
+		"*.cache",
+		"*.crdownload",
+		"*.db",
+		"*.dmp",
+		"*.dump",
+		"*.eslintcache",
+		"*.lock",
+		"*.log",
+		"*.old",
+		"*.part",
+		"*.partial",
+		"*.pyc",
+		"*.pyo",
+		"*.stackdump",
+		"*.swo",
+		"*.swp",
+		"*.temp",
+		"*.tmp",
+		"Thumbs.db",
+	]
+
+	return !cachePatterns.some((pattern) => {
+		if (pattern.startsWith("*.")) {
+			const extension = pattern.slice(1)
+			return basename.endsWith(extension)
+		} else {
+			return basename === pattern
+		}
+	})
 }

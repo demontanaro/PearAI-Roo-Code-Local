@@ -4,30 +4,9 @@ import pdf from "pdf-parse/lib/pdf-parse"
 import mammoth from "mammoth"
 import fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
-
-export async function extractTextFromFile(filePath: string): Promise<string> {
-	try {
-		await fs.access(filePath)
-	} catch (error) {
-		throw new Error(`File not found: ${filePath}`)
-	}
-	const fileExtension = path.extname(filePath).toLowerCase()
-	switch (fileExtension) {
-		case ".pdf":
-			return extractTextFromPDF(filePath)
-		case ".docx":
-			return extractTextFromDOCX(filePath)
-		case ".ipynb":
-			return extractTextFromIPYNB(filePath)
-		default:
-			const isBinary = await isBinaryFile(filePath).catch(() => false)
-			if (!isBinary) {
-				return addLineNumbers(await fs.readFile(filePath, "utf8"))
-			} else {
-				throw new Error(`Cannot read text for file type: ${fileExtension}`)
-			}
-	}
-}
+import { extractTextFromXLSX } from "./extract-text-from-xlsx"
+import { readWithSlice } from "./indentation-reader"
+import { DEFAULT_LINE_LIMIT } from "../../core/prompts/tools/native-tools/read_file"
 
 async function extractTextFromPDF(filePath: string): Promise<string> {
 	const dataBuffer = await fs.readFile(filePath)
@@ -52,6 +31,106 @@ async function extractTextFromIPYNB(filePath: string): Promise<string> {
 	}
 
 	return addLineNumbers(extractedText)
+}
+
+/**
+ * Map of supported binary file formats to their extraction functions
+ */
+const SUPPORTED_BINARY_FORMATS = {
+	".pdf": extractTextFromPDF,
+	".docx": extractTextFromDOCX,
+	".ipynb": extractTextFromIPYNB,
+	".xlsx": extractTextFromXLSX,
+} as const
+
+/**
+ * Returns the list of supported binary file formats that can be processed by extractTextFromFile
+ */
+export function getSupportedBinaryFormats(): string[] {
+	return Object.keys(SUPPORTED_BINARY_FORMATS)
+}
+
+/**
+ * Result of extracting text with metadata about truncation
+ */
+export interface ExtractTextResult {
+	/** The extracted content with line numbers */
+	content: string
+	/** Total lines in the file */
+	totalLines: number
+	/** Lines actually returned */
+	returnedLines: number
+	/** Whether output was truncated */
+	wasTruncated: boolean
+	/** Line range shown [start, end] (1-based) */
+	linesShown?: [number, number]
+}
+
+/**
+ * Extracts text content from a file with truncation support.
+ * Returns structured result with metadata about truncation.
+ *
+ * @param filePath - Path to the file to extract text from
+ * @param limit - Maximum lines to return (default: 2000)
+ * @returns Promise resolving to extracted text with metadata
+ * @throws {Error} If file not found or unsupported binary format
+ */
+export async function extractTextFromFileWithMetadata(
+	filePath: string,
+	limit: number = DEFAULT_LINE_LIMIT,
+): Promise<ExtractTextResult> {
+	try {
+		await fs.access(filePath)
+	} catch (error) {
+		throw new Error(`File not found: ${filePath}`)
+	}
+
+	const fileExtension = path.extname(filePath).toLowerCase()
+
+	// Check if we have a specific extractor for this format
+	const extractor = SUPPORTED_BINARY_FORMATS[fileExtension as keyof typeof SUPPORTED_BINARY_FORMATS]
+	if (extractor) {
+		// For binary formats, extract and count lines
+		const content = await extractor(filePath)
+		const lines = content.split("\n")
+		return {
+			content,
+			totalLines: lines.length,
+			returnedLines: lines.length,
+			wasTruncated: false,
+		}
+	}
+
+	// Handle other files
+	const isBinary = await isBinaryFile(filePath).catch(() => false)
+
+	if (!isBinary) {
+		const rawContent = await fs.readFile(filePath, "utf8")
+		const result = readWithSlice(rawContent, 0, limit)
+
+		return {
+			content: result.content,
+			totalLines: result.totalLines,
+			returnedLines: result.returnedLines,
+			wasTruncated: result.wasTruncated,
+			linesShown: result.includedRanges.length > 0 ? result.includedRanges[0] : undefined,
+		}
+	} else {
+		throw new Error(`Cannot read text for file type: ${fileExtension}`)
+	}
+}
+
+/**
+ * Extracts text content from a file, with support for various formats including PDF, DOCX, XLSX, and plain text.
+ * Now uses truncation to limit large files to DEFAULT_LINE_LIMIT lines.
+ *
+ * @param filePath - Path to the file to extract text from
+ * @returns Promise resolving to the extracted text content with line numbers
+ * @throws {Error} If file not found or unsupported binary format
+ */
+export async function extractTextFromFile(filePath: string): Promise<string> {
+	const result = await extractTextFromFileWithMetadata(filePath)
+	return result.content
 }
 
 export function addLineNumbers(content: string, startLine: number = 1): string {
@@ -108,7 +187,16 @@ export function stripLineNumbers(content: string, aggressive: boolean = false): 
 
 	// Join back with original line endings (carriage return (\r) + line feed (\n) or just line feed (\n))
 	const lineEnding = content.includes("\r\n") ? "\r\n" : "\n"
-	return processedLines.join(lineEnding)
+	let result = processedLines.join(lineEnding)
+
+	// Preserve trailing newline if present in original content
+	if (content.endsWith(lineEnding)) {
+		if (!result.endsWith(lineEnding)) {
+			result += lineEnding
+		}
+	}
+
+	return result
 }
 
 /**
@@ -116,17 +204,58 @@ export function stripLineNumbers(content: string, aggressive: boolean = false): 
  * When truncation is needed, it keeps 20% of the lines from the start and 80% from the end,
  * with a clear indicator of how many lines were omitted in between.
  *
+ * IMPORTANT: Character limit takes precedence over line limit. This is because:
+ * 1. Character limit provides a hard cap on memory usage and context window consumption
+ * 2. A single line with millions of characters could bypass line limits and cause issues
+ * 3. Character limit ensures consistent behavior regardless of line structure
+ *
+ * When both limits are specified:
+ * - If content exceeds character limit, character-based truncation is applied (regardless of line count)
+ * - If content is within character limit but exceeds line limit, line-based truncation is applied
+ * - This prevents edge cases where extremely long lines could consume excessive resources
+ *
  * @param content The multi-line string to truncate
- * @param lineLimit Optional maximum number of lines to keep. If not provided or 0, returns the original content
- * @returns The truncated string with an indicator of omitted lines, or the original content if no truncation needed
+ * @param lineLimit Optional maximum number of lines to keep. If not provided or 0, no line limit is applied
+ * @param characterLimit Optional maximum number of characters to keep. If not provided or 0, no character limit is applied
+ * @returns The truncated string with an indicator of omitted content, or the original content if no truncation needed
  *
  * @example
  * // With 10 line limit on 25 lines of content:
  * // - Keeps first 2 lines (20% of 10)
  * // - Keeps last 8 lines (80% of 10)
  * // - Adds "[...15 lines omitted...]" in between
+ *
+ * @example
+ * // With character limit on long single line:
+ * // - Keeps first 20% of characters
+ * // - Keeps last 80% of characters
+ * // - Adds "[...X characters omitted...]" in between
+ *
+ * @example
+ * // Character limit takes precedence:
+ * // content = "A".repeat(50000) + "\n" + "B".repeat(50000) // 2 lines, 100,002 chars
+ * // truncateOutput(content, 10, 40000) // Uses character limit, not line limit
+ * // Result: First ~8000 chars + "[...60002 characters omitted...]" + Last ~32000 chars
  */
-export function truncateOutput(content: string, lineLimit?: number): string {
+export function truncateOutput(content: string, lineLimit?: number, characterLimit?: number): string {
+	// If no limits are specified, return original content
+	if (!lineLimit && !characterLimit) {
+		return content
+	}
+
+	// Character limit takes priority over line limit
+	if (characterLimit && content.length > characterLimit) {
+		const beforeLimit = Math.floor(characterLimit * 0.2) // 20% of characters before
+		const afterLimit = characterLimit - beforeLimit // remaining 80% after
+
+		const startSection = content.slice(0, beforeLimit)
+		const endSection = content.slice(-afterLimit)
+		const omittedChars = content.length - characterLimit
+
+		return startSection + `\n[...${omittedChars} characters omitted...]\n` + endSection
+	}
+
+	// If character limit is not exceeded or not specified, check line limit
 	if (!lineLimit) {
 		return content
 	}

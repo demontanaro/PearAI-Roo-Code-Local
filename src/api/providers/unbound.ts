@@ -1,125 +1,212 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { ApiHandlerOptions, unboundDefaultModelId, unboundDefaultModelInfo } from "../../shared/api"
+import { type ModelInfo, type ModelRecord, unboundDefaultModelId, unboundDefaultModelInfo } from "@roo-code/types"
 
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import type { ApiHandlerOptions } from "../../shared/api"
+import { calculateApiCostOpenAI } from "../../shared/cost"
+
 import { convertToOpenAiMessages } from "../transform/openai-format"
-import { addCacheBreakpoints } from "../transform/caching/anthropic"
+import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { getModelParams } from "../transform/model-params"
+import { OpenAiReasoningParams } from "../transform/reasoning"
 
-import { SingleCompletionHandler } from "../index"
-import { RouterProvider } from "./router-provider"
+import { DEFAULT_HEADERS } from "./constants"
+import { getModels } from "./fetchers/modelCache"
+import { BaseProvider } from "./base-provider"
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+import { handleOpenAIError } from "./utils/openai-error-handler"
+import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 
-const DEFAULT_HEADERS = {
-	"X-Unbound-Metadata": JSON.stringify({ labels: [{ key: "app", value: "roo-code" }] }),
-}
-
+// Unbound usage includes extra fields for Anthropic cache tokens.
 interface UnboundUsage extends OpenAI.CompletionUsage {
 	cache_creation_input_tokens?: number
 	cache_read_input_tokens?: number
 }
 
-export class UnboundHandler extends RouterProvider implements SingleCompletionHandler {
+type UnboundChatCompletionParamsStreaming = OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & {
+	unbound_metadata?: {
+		originApp?: string
+		taskId?: string
+		mode?: string
+	}
+	thinking?: OpenAiReasoningParams
+}
+
+type UnboundChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
+	unbound_metadata?: {
+		originApp?: string
+		taskId?: string
+		mode?: string
+	}
+	thinking?: OpenAiReasoningParams
+}
+
+export class UnboundHandler extends BaseProvider implements SingleCompletionHandler {
+	protected options: ApiHandlerOptions
+	protected models: ModelRecord = {}
+	private client: OpenAI
+	private readonly providerName = "Unbound"
+
 	constructor(options: ApiHandlerOptions) {
-		super({
-			options,
-			name: "unbound",
+		super()
+
+		this.options = options
+
+		const apiKey = this.options.unboundApiKey ?? "not-provided"
+
+		this.client = new OpenAI({
 			baseURL: "https://api.getunbound.ai/v1",
-			apiKey: options.unboundApiKey,
-			modelId: options.unboundModelId,
-			defaultModelId: unboundDefaultModelId,
-			defaultModelInfo: unboundDefaultModelInfo,
+			apiKey: apiKey,
+			defaultHeaders: {
+				...DEFAULT_HEADERS,
+				"X-Unbound-Metadata": JSON.stringify({ labels: [{ key: "app", value: "roo-code" }] }),
+			},
 		})
 	}
 
-	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		const { id: modelId, info } = await this.fetchModel()
+	public async fetchModel() {
+		this.models = await getModels({ provider: "unbound", apiKey: this.options.unboundApiKey })
+		return this.getModel()
+	}
+
+	override getModel() {
+		const id = this.options.unboundModelId ?? unboundDefaultModelId
+		const cachedInfo = this.models[id] ?? unboundDefaultModelInfo
+		let info: ModelInfo = cachedInfo
+
+		// Apply tool preferences for models accessed through routers (OpenAI, Gemini)
+		info = applyRouterToolPreferences(id, info)
+
+		const params = getModelParams({
+			format: "openai",
+			modelId: id,
+			model: info,
+			settings: this.options,
+			defaultTemperature: 0,
+		})
+
+		return { id, info, ...params }
+	}
+
+	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
+		const unboundUsage = usage as UnboundUsage
+		const inputTokens = unboundUsage?.prompt_tokens || 0
+		const outputTokens = unboundUsage?.completion_tokens || 0
+		const cacheWriteTokens = unboundUsage?.cache_creation_input_tokens || 0
+		const cacheReadTokens = unboundUsage?.cache_read_input_tokens || 0
+		const { totalCost } = modelInfo
+			? calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
+			: { totalCost: 0 }
+
+		return {
+			type: "usage",
+			inputTokens: inputTokens,
+			outputTokens: outputTokens,
+			cacheWriteTokens: cacheWriteTokens,
+			cacheReadTokens: cacheReadTokens,
+			totalCost: totalCost,
+		}
+	}
+
+	override async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
+		const {
+			id: model,
+			info,
+			maxTokens: max_tokens,
+			temperature,
+			reasoningEffort: reasoning_effort,
+			reasoning: thinking,
+		} = await this.fetchModel()
 
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
 
-		if (modelId.startsWith("anthropic/claude-3")) {
-			addCacheBreakpoints(systemPrompt, openAiMessages)
-		}
+		// Map extended efforts to OpenAI Chat Completions-accepted values (omit unsupported)
+		const allowedEffort = (["low", "medium", "high"] as const).includes(reasoning_effort as any)
+			? (reasoning_effort as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming["reasoning_effort"])
+			: undefined
 
-		// Required by Anthropic; other providers default to max tokens allowed.
-		let maxTokens: number | undefined
-
-		if (modelId.startsWith("anthropic/")) {
-			maxTokens = info.maxTokens ?? undefined
-		}
-
-		const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-			model: modelId.split("/")[1],
-			max_tokens: maxTokens,
+		const completionParams: UnboundChatCompletionParamsStreaming = {
 			messages: openAiMessages,
+			model,
+			max_tokens,
+			temperature,
+			...(allowedEffort && { reasoning_effort: allowedEffort }),
+			...(thinking && { thinking }),
 			stream: true,
+			stream_options: { include_usage: true },
+			unbound_metadata: { originApp: "roo-code", taskId: metadata?.taskId, mode: metadata?.mode },
+			tools: this.convertToolsForOpenAI(metadata?.tools),
+			tool_choice: metadata?.tool_choice,
 		}
 
-		if (this.supportsTemperature(modelId)) {
-			requestOptions.temperature = this.options.modelTemperature ?? 0
+		let stream
+		try {
+			stream = await this.client.chat.completions.create(completionParams)
+		} catch (error) {
+			throw handleOpenAIError(error, this.providerName)
 		}
+		let lastUsage: any = undefined
 
-		const { data: completion } = await this.client.chat.completions
-			.create(requestOptions, { headers: DEFAULT_HEADERS })
-			.withResponse()
-
-		for await (const chunk of completion) {
+		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
-			const usage = chunk.usage as UnboundUsage
 
 			if (delta?.content) {
 				yield { type: "text", text: delta.content }
 			}
 
-			if (usage) {
-				const usageData: ApiStreamUsageChunk = {
-					type: "usage",
-					inputTokens: usage.prompt_tokens || 0,
-					outputTokens: usage.completion_tokens || 0,
-				}
-
-				// Only add cache tokens if they exist.
-				if (usage.cache_creation_input_tokens) {
-					usageData.cacheWriteTokens = usage.cache_creation_input_tokens
-				}
-
-				if (usage.cache_read_input_tokens) {
-					usageData.cacheReadTokens = usage.cache_read_input_tokens
-				}
-
-				yield usageData
+			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
+				yield { type: "reasoning", text: (delta.reasoning_content as string | undefined) || "" }
 			}
+
+			// Handle native tool calls
+			if (delta && "tool_calls" in delta && Array.isArray(delta.tool_calls)) {
+				for (const toolCall of delta.tool_calls) {
+					yield {
+						type: "tool_call_partial",
+						index: toolCall.index,
+						id: toolCall.id,
+						name: toolCall.function?.name,
+						arguments: toolCall.function?.arguments,
+					}
+				}
+			}
+
+			if (chunk.usage) {
+				lastUsage = chunk.usage
+			}
+		}
+
+		if (lastUsage) {
+			yield this.processUsageMetrics(lastUsage, info)
 		}
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
-		const { id: modelId, info } = await this.fetchModel()
+		const { id: model, maxTokens: max_tokens, temperature } = await this.fetchModel()
 
-		try {
-			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-				model: modelId.split("/")[1],
-				messages: [{ role: "user", content: prompt }],
-			}
+		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: "system", content: prompt }]
 
-			if (this.supportsTemperature(modelId)) {
-				requestOptions.temperature = this.options.modelTemperature ?? 0
-			}
-
-			if (modelId.startsWith("anthropic/")) {
-				requestOptions.max_tokens = info.maxTokens
-			}
-
-			const response = await this.client.chat.completions.create(requestOptions, { headers: DEFAULT_HEADERS })
-			return response.choices[0]?.message.content || ""
-		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`Unbound completion error: ${error.message}`)
-			}
-
-			throw error
+		const completionParams: UnboundChatCompletionParams = {
+			model,
+			max_tokens,
+			messages: openAiMessages,
+			temperature: temperature,
 		}
+
+		let response: OpenAI.Chat.ChatCompletion
+		try {
+			response = await this.client.chat.completions.create(completionParams)
+		} catch (error) {
+			throw handleOpenAIError(error, this.providerName)
+		}
+		return response.choices[0]?.message.content || ""
 	}
 }

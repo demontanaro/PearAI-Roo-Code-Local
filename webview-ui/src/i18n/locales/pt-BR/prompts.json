@@ -1,13 +1,16 @@
 {
-	"title": "Prompts",
+	"title": "Modos",
 	"done": "Concluído",
 	"modes": {
 		"title": "Modos",
 		"createNewMode": "Criar novo modo",
+		"importMode": "Importar modo",
+		"noMatchFound": "Nenhum modo encontrado",
 		"editModesConfig": "Editar configuração de modos",
 		"editGlobalModes": "Editar modos globais",
-		"editProjectModes": "Editar modos do projeto (.pearai-agent-ignore)",
-		"createModeHelpText": "Clique em + para criar um novo modo personalizado, ou simplesmente peça ao Agent no chat para criar um para você!"
+		"editProjectModes": "Editar modos do projeto (.roomodes)",
+		"createModeHelpText": "Modos são personas especializadas que adaptam o comportamento do Roo. <0>Saiba mais sobre o uso de modos</0> ou <1>Personalização de modos.</1>",
+		"selectMode": "Buscar modos"
 	},
 	"apiConfiguration": {
 		"title": "Configuração de API",
@@ -22,7 +25,6 @@
 		"toolNames": {
 			"read": "Ler arquivos",
 			"edit": "Editar arquivos",
-			"browser": "Usar navegador",
 			"command": "Executar comandos",
 			"mcp": "Usar MCP"
 		},
@@ -31,18 +33,47 @@
 	"roleDefinition": {
 		"title": "Definição de função",
 		"resetToDefault": "Restaurar para padrão",
-		"description": "Defina a expertise e personalidade do Agent para este modo. Esta descrição molda como o Agent se apresenta e aborda tarefas."
+		"description": "Defina a expertise e personalidade do Roo para este modo. Esta descrição molda como o Roo se apresenta e aborda tarefas."
+	},
+	"description": {
+		"title": "Descrição curta (para humanos)",
+		"resetToDefault": "Redefinir para descrição padrão",
+		"description": "Uma breve descrição exibida no menu suspenso do seletor de modo."
+	},
+	"whenToUse": {
+		"title": "Quando usar (opcional)",
+		"description": "Descreva quando este modo deve ser usado. Isso ajuda o Orchestrator a escolher o modo certo para uma tarefa.",
+		"resetToDefault": "Restaurar descrição 'Quando usar' para padrão"
 	},
 	"customInstructions": {
 		"title": "Instruções personalizadas específicas do modo (opcional)",
 		"resetToDefault": "Restaurar para padrão",
 		"description": "Adicione diretrizes comportamentais específicas para o modo {{modeName}}.",
-		"loadFromFile": "Instruções personalizadas específicas para o modo {{modeName}} também podem ser carregadas da pasta <span>.pearai-agent/rules-{{modeSlug}}/</span> no seu espaço de trabalho (.roorules-{{modeSlug}} e .clinerules-{{modeSlug}} estão obsoletos e deixarão de funcionar em breve)."
+		"loadFromFile": "Instruções personalizadas específicas para o modo {{mode}} também podem ser carregadas da pasta <span>.roo/rules-{{slug}}/</span> no seu espaço de trabalho ou do global <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} e .clinerules-{{slug}} estão obsoletos e deixarão de funcionar em breve)."
+	},
+	"exportMode": {
+		"title": "Exportar modo",
+		"description": "Exporte este modo para um arquivo YAML com todas as regras incluídas para compartilhar facilmente com outros.",
+		"export": "Exportar modo",
+		"exporting": "Exportando..."
+	},
+	"importMode": {
+		"selectLevel": "Escolha onde importar este modo:",
+		"import": "Importar",
+		"importing": "Importando...",
+		"global": {
+			"label": "Nível global",
+			"description": "Disponível em todos os projetos. As regras serão mescladas nas instruções personalizadas."
+		},
+		"project": {
+			"label": "Nível do projeto",
+			"description": "Disponível apenas neste espaço de trabalho. Se o modo exportado continha arquivos de regras, eles serão recriados na pasta .roo/rules-{slug}/."
+		}
 	},
 	"globalCustomInstructions": {
 		"title": "Instruções personalizadas para todos os modos",
-		"description": "Estas instruções se aplicam a todos os modos. Elas fornecem um conjunto base de comportamentos que podem ser aprimorados por instruções específicas do modo abaixo.\nSe você desejar que o Agent pense e fale em um idioma diferente do idioma de exibição do seu editor ({{language}}), você pode especificá-lo aqui.",
-		"loadFromFile": "As instruções também podem ser carregadas da pasta <span>.pearai-agent/rules/</span> no seu espaço de trabalho (.roorules e .clinerules estão obsoletos e deixarão de funcionar em breve)."
+		"description": "Estas instruções se aplicam a todos os modos. Elas fornecem um conjunto base de comportamentos que podem ser aprimorados por instruções específicas do modo abaixo. <0>Saiba mais</0>",
+		"loadFromFile": "Instruções também podem ser carregadas da pasta <span>.roo/rules/</span> no seu espaço de trabalho ou do global <0>.roo/rules/</0> (.roorules e .clinerules estão obsoletos e deixarão de funcionar em breve)."
 	},
 	"systemPrompt": {
 		"preview": "Visualizar prompt do sistema",
@@ -58,12 +89,24 @@
 			"apiConfigDescription": "Você pode selecionar uma configuração de API para usar sempre para aprimorar prompts, ou simplesmente use o que está atualmente selecionado",
 			"useCurrentConfig": "Usar configuração de API atualmente selecionada",
 			"testPromptPlaceholder": "Digite um prompt para testar o aprimoramento",
-			"previewButton": "Visualizar aprimoramento do prompt"
+			"previewButton": "Visualizar aprimoramento do prompt",
+			"testEnhancement": "Testar aprimoramento",
+			"includeTaskHistory": "Incluir histórico de tarefas como contexto",
+			"includeTaskHistoryDescription": "Quando habilitado, as últimas 10 mensagens da conversa atual serão incluídas como contexto ao aprimorar prompts, ajudando a gerar sugestões mais relevantes e conscientes do contexto."
+		},
+		"condense": {
+			"apiConfiguration": "Configuração da API para condensação de contexto",
+			"apiConfigDescription": "Selecione qual configuração de API usar para operações de condensação de contexto. Deixe desmarcado para usar a configuração ativa atual.",
+			"useCurrentConfig": "Usar a configuração de API selecionada no momento"
 		},
 		"types": {
 			"ENHANCE": {
 				"label": "Aprimorar Prompt",
-				"description": "Use o aprimoramento de prompt para obter sugestões ou melhorias personalizadas para suas entradas. Isso garante que o Agent entenda sua intenção e forneça as melhores respostas possíveis. Disponível através do ícone ✨ no chat."
+				"description": "Use o aprimoramento de prompt para obter sugestões ou melhorias personalizadas para suas entradas. Isso garante que o Roo entenda sua intenção e forneça as melhores respostas possíveis. Disponível através do ícone ✨ no chat."
+			},
+			"CONDENSE": {
+				"label": "Condensação de Contexto",
+				"description": "Configure como o contexto da conversa é condensado para gerenciar os limites de token. Este prompt é usado para operações de condensação de contexto manuais e automáticas."
 			},
 			"EXPLAIN": {
 				"label": "Explicar Código",
@@ -75,7 +118,7 @@
 			},
 			"IMPROVE": {
 				"label": "Melhorar Código",
-				"description": "Receba sugestões para otimização de código, melhores práticas e melhorias arquitetônicas mantendo a funcionalidade. Disponível nas ações de código (ícone de lâmpada no editor) e no menu de contexto do editor (clique direito no código selecionado)."
+				"description": "Receba sugestões para otimização de código, melhores práticas e melhorias arquitetônicas mantendo la funcionalidade. Disponível nas ações de código (ícone de lâmpada no editor) e no menu de contexto do editor (clique direito no código selecionado)."
 			},
 			"ADD_TO_CONTEXT": {
 				"label": "Adicionar ao Contexto",
@@ -99,10 +142,6 @@
 			}
 		}
 	},
-	"advancedSystemPrompt": {
-		"title": "Avançado: Substituir prompt do sistema",
-		"description": "Você pode substituir completamente o prompt do sistema para este modo (além da definição de função e instruções personalizadas) criando um arquivo em .pearai-agent/system-prompt-{{modeSlug}} no seu espaço de trabalho. Esta é uma funcionalidade muito avançada que contorna as salvaguardas integradas e verificações de consistência (especialmente em torno do uso de ferramentas), então tenha cuidado!"
-	},
 	"createModeDialog": {
 		"title": "Criar novo modo",
 		"close": "Fechar",
@@ -122,17 +161,25 @@
 				"description": "Disponível em todos os espaços de trabalho"
 			},
 			"project": {
-				"label": "Específico do projeto (.pearai-agent-ignore)",
+				"label": "Específico do projeto (.roomodes)",
 				"description": "Disponível apenas neste espaço de trabalho, tem precedência sobre o global"
 			}
 		},
 		"roleDefinition": {
 			"label": "Definição de função",
-			"description": "Defina a expertise e personalidade do Agent para este modo."
+			"description": "Defina a expertise e personalidade do Roo para este modo."
+		},
+		"whenToUse": {
+			"label": "Quando usar (opcional)",
+			"description": "Forneça uma descrição clara de quando este modo é mais eficaz e para quais tipos de tarefas ele se destaca."
 		},
 		"tools": {
 			"label": "Ferramentas disponíveis",
 			"description": "Selecione quais ferramentas este modo pode usar."
+		},
+		"description": {
+			"label": "Descrição curta (para humanos)",
+			"description": "Uma breve descrição exibida no menu suspenso do seletor de modo."
 		},
 		"customInstructions": {
 			"label": "Instruções personalizadas (opcional)",
@@ -144,5 +191,13 @@
 		},
 		"deleteMode": "Excluir modo"
 	},
-	"allFiles": "todos os arquivos"
+	"allFiles": "todos os arquivos",
+	"deleteMode": {
+		"title": "Excluir Modo",
+		"message": "Tem certeza de que deseja excluir o modo \"{{modeName}}\"?",
+		"rulesFolder": "Este modo tem uma pasta de regras em {{folderPath}} que também será excluída.",
+		"descriptionNoRules": "Tem certeza de que deseja excluir este modo personalizado?",
+		"confirm": "Excluir",
+		"cancel": "Cancelar"
+	}
 }

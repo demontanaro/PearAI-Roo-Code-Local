@@ -1,285 +1,87 @@
-// npx jest src/integrations/terminal/__tests__/TerminalProcess.test.ts
-
 import * as vscode from "vscode"
-
-import { mergePromise } from "../mergePromise"
 import { TerminalProcess } from "../TerminalProcess"
 import { Terminal } from "../Terminal"
-import { TerminalRegistry } from "../TerminalRegistry"
 
-// Mock vscode.window.createTerminal
-const mockCreateTerminal = jest.fn()
-
-jest.mock("vscode", () => ({
+// Mock dependencies
+vi.mock("vscode", () => ({
+	window: {
+		createTerminal: vi.fn(),
+	},
 	workspace: {
-		getConfiguration: jest.fn().mockReturnValue({
-			get: jest.fn().mockReturnValue(null),
+		getConfiguration: vi.fn().mockReturnValue({
+			get: vi.fn(),
 		}),
 	},
-	window: {
-		createTerminal: (...args: any[]) => {
-			mockCreateTerminal(...args)
-			return {
-				exitStatus: undefined,
-			}
-		},
-	},
-	ThemeIcon: jest.fn(),
+	ThemeIcon: vi.fn(),
 }))
 
-jest.mock("execa", () => ({
-	execa: jest.fn(),
-}))
-
-describe("TerminalProcess", () => {
-	let terminalProcess: TerminalProcess
-	let mockTerminal: jest.Mocked<
-		vscode.Terminal & {
-			shellIntegration: {
-				executeCommand: jest.Mock
-			}
-		}
-	>
-	let mockTerminalInfo: Terminal
-	let mockExecution: any
-	let mockStream: AsyncIterableIterator<string>
+describe("TerminalProcess ANSI Handling", () => {
+	let terminalProcess: any // Using any to access private methods
+	let mockTerminal: any
 
 	beforeEach(() => {
-		// Create properly typed mock terminal
 		mockTerminal = {
 			shellIntegration: {
-				executeCommand: jest.fn(),
+				executeCommand: vi.fn(),
 			},
-			name: "Agent",
+			name: "Test Terminal",
 			processId: Promise.resolve(123),
 			creationOptions: {},
 			exitStatus: undefined,
 			state: { isInteractedWith: true },
-			dispose: jest.fn(),
-			hide: jest.fn(),
-			show: jest.fn(),
-			sendText: jest.fn(),
-		} as unknown as jest.Mocked<
-			vscode.Terminal & {
-				shellIntegration: {
-					executeCommand: jest.Mock
-				}
-			}
-		>
+			dispose: vi.fn(),
+			hide: vi.fn(),
+			show: vi.fn(),
+			sendText: vi.fn(),
+		}
 
-		mockTerminalInfo = new Terminal(1, mockTerminal, "./")
-
-		// Create a process for testing
-		terminalProcess = new TerminalProcess(mockTerminalInfo)
-
-		TerminalRegistry["terminals"].push(mockTerminalInfo)
-
-		// Reset event listeners
-		terminalProcess.removeAllListeners()
+		const terminalInfo = new Terminal(1, mockTerminal, "/tmp")
+		terminalProcess = new TerminalProcess(terminalInfo)
 	})
 
-	describe("run", () => {
-		it("handles shell integration commands correctly", async () => {
-			let lines: string[] = []
-
-			terminalProcess.on("completed", (output) => {
-				if (output) {
-					lines = output.split("\n")
-				}
-			})
-
-			// Mock stream data with shell integration sequences.
-			mockStream = (async function* () {
-				yield "\x1b]633;C\x07" // The first chunk contains the command start sequence with bell character.
-				yield "Initial output\n"
-				yield "More output\n"
-				yield "Final output"
-				yield "\x1b]633;D\x07" // The last chunk contains the command end sequence with bell character.
-				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
-			})()
-
-			mockExecution = {
-				read: jest.fn().mockReturnValue(mockStream),
-			}
-
-			mockTerminal.shellIntegration.executeCommand.mockReturnValue(mockExecution)
-
-			const runPromise = terminalProcess.run("test command")
-			terminalProcess.emit("stream_available", mockStream)
-			await runPromise
-
-			expect(lines).toEqual(["Initial output", "More output", "Final output"])
-			expect(terminalProcess.isHot).toBe(false)
+	describe("removeVSCodeShellIntegration", () => {
+		it("should preserve standard ANSI SGR sequences", () => {
+			const input = "\x1B[32mgreen text\x1B[0m"
+			const result = terminalProcess.removeVSCodeShellIntegration(input)
+			expect(result).toBe("\x1B[32mgreen text\x1B[0m")
 		})
 
-		it("handles terminals without shell integration", async () => {
-			// Temporarily suppress the expected console.warn for this test
-			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {})
-
-			// Create a terminal without shell integration
-			const noShellTerminal = {
-				sendText: jest.fn(),
-				shellIntegration: undefined,
-				name: "No Shell Terminal",
-				processId: Promise.resolve(456),
-				creationOptions: {},
-				exitStatus: undefined,
-				state: { isInteractedWith: true },
-				dispose: jest.fn(),
-				hide: jest.fn(),
-				show: jest.fn(),
-			} as unknown as vscode.Terminal
-
-			// Create new terminal info with the no-shell terminal
-			const noShellTerminalInfo = new Terminal(2, noShellTerminal, "./")
-
-			// Create new process with the no-shell terminal
-			const noShellProcess = new TerminalProcess(noShellTerminalInfo)
-
-			// Set up event listeners to verify events are emitted
-			const eventPromises = Promise.all([
-				new Promise<void>((resolve) =>
-					noShellProcess.once("no_shell_integration", (_message: string) => resolve()),
-				),
-				new Promise<void>((resolve) => noShellProcess.once("completed", (_output?: string) => resolve())),
-				new Promise<void>((resolve) => noShellProcess.once("continue", resolve)),
-			])
-
-			// Run command and wait for all events
-			await noShellProcess.run("test command")
-			await eventPromises
-
-			// Verify sendText was called with the command
-			expect(noShellTerminal.sendText).toHaveBeenCalledWith("test command", true)
-
-			// Restore the original console.warn
-			consoleWarnSpy.mockRestore()
+		it("should remove OSC 633 sequences", () => {
+			const input = "\x1B]633;A\x07some text"
+			const result = terminalProcess.removeVSCodeShellIntegration(input)
+			expect(result).toBe("some text")
 		})
 
-		it("sets hot state for compiling commands", async () => {
-			let lines: string[] = []
+		it("should remove OSC 133 sequences", () => {
+			const input = "\x1B]133;A\x07some text"
+			const result = terminalProcess.removeVSCodeShellIntegration(input)
+			expect(result).toBe("some text")
+		})
 
-			terminalProcess.on("completed", (output) => {
-				if (output) {
-					lines = output.split("\n")
-				}
-			})
+		it("should handle mixed sequences", () => {
+			const input = "\x1B]633;C\x07\x1B[1m\x1B[32m✓\x1B[39m\x1B[22m test passed"
+			const result = terminalProcess.removeVSCodeShellIntegration(input)
+			expect(result).toBe("\x1B[1m\x1B[32m✓\x1B[39m\x1B[22m test passed")
+		})
 
-			const completePromise = new Promise<void>((resolve) => {
-				terminalProcess.on("shell_execution_complete", () => resolve())
-			})
-
-			mockStream = (async function* () {
-				yield "\x1b]633;C\x07" // The first chunk contains the command start sequence with bell character.
-				yield "compiling...\n"
-				yield "still compiling...\n"
-				yield "done"
-				yield "\x1b]633;D\x07" // The last chunk contains the command end sequence with bell character.
-				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
-			})()
-
-			mockTerminal.shellIntegration.executeCommand.mockReturnValue({
-				read: jest.fn().mockReturnValue(mockStream),
-			})
-
-			const runPromise = terminalProcess.run("npm run build")
-			terminalProcess.emit("stream_available", mockStream)
-
-			expect(terminalProcess.isHot).toBe(true)
-			await runPromise
-
-			expect(lines).toEqual(["compiling...", "still compiling...", "done"])
-
-			await completePromise
-			expect(terminalProcess.isHot).toBe(false)
+		it("should remove other OSC sequences", () => {
+			const input = "\x1B]0;Console Title\x07Content"
+			const result = terminalProcess.removeVSCodeShellIntegration(input)
+			expect(result).toBe("Content")
 		})
 	})
 
-	describe("continue", () => {
-		it("stops listening and emits continue event", () => {
-			const continueSpy = jest.fn()
-			terminalProcess.on("continue", continueSpy)
-
-			terminalProcess.continue()
-
-			expect(continueSpy).toHaveBeenCalled()
-			expect(terminalProcess["isListening"]).toBe(false)
-		})
-	})
-
-	describe("getUnretrievedOutput", () => {
-		it("returns and clears unretrieved output", () => {
-			terminalProcess["fullOutput"] = `\x1b]633;C\x07previous\nnew output\x1b]633;D\x07`
-			terminalProcess["lastRetrievedIndex"] = 17 // After "previous\n"
-
-			const unretrieved = terminalProcess.getUnretrievedOutput()
-			expect(unretrieved).toBe("new output")
-
-			expect(terminalProcess["lastRetrievedIndex"]).toBe(terminalProcess["fullOutput"].length - "previous".length)
-		})
-	})
-
-	describe("interpretExitCode", () => {
-		it("handles undefined exit code", () => {
-			const result = TerminalProcess.interpretExitCode(undefined)
-			expect(result).toEqual({ exitCode: undefined })
+	describe("stripCursorSequences", () => {
+		it("should remove cursor movement codes", () => {
+			const input = "text\x1B[1Aup\x1B[2Kclear"
+			const result = terminalProcess.stripCursorSequences(input)
+			expect(result).toBe("textupclear")
 		})
 
-		it("handles normal exit codes (0-128)", () => {
-			const result = TerminalProcess.interpretExitCode(0)
-			expect(result).toEqual({ exitCode: 0 })
-
-			const result2 = TerminalProcess.interpretExitCode(1)
-			expect(result2).toEqual({ exitCode: 1 })
-
-			const result3 = TerminalProcess.interpretExitCode(128)
-			expect(result3).toEqual({ exitCode: 128 })
-		})
-
-		it("interprets signal exit codes (>128)", () => {
-			// SIGTERM (15) -> 128 + 15 = 143
-			const result = TerminalProcess.interpretExitCode(143)
-			expect(result).toEqual({
-				exitCode: 143,
-				signal: 15,
-				signalName: "SIGTERM",
-				coreDumpPossible: false,
-			})
-
-			// SIGSEGV (11) -> 128 + 11 = 139
-			const result2 = TerminalProcess.interpretExitCode(139)
-			expect(result2).toEqual({
-				exitCode: 139,
-				signal: 11,
-				signalName: "SIGSEGV",
-				coreDumpPossible: true,
-			})
-		})
-
-		it("handles unknown signals", () => {
-			const result = TerminalProcess.interpretExitCode(255)
-			expect(result).toEqual({
-				exitCode: 255,
-				signal: 127,
-				signalName: "Unknown Signal (127)",
-				coreDumpPossible: false,
-			})
-		})
-	})
-
-	describe("mergePromise", () => {
-		it("merges promise methods with terminal process", async () => {
-			const process = new TerminalProcess(mockTerminalInfo)
-			const promise = Promise.resolve()
-
-			const merged = mergePromise(process, promise)
-
-			expect(merged).toHaveProperty("then")
-			expect(merged).toHaveProperty("catch")
-			expect(merged).toHaveProperty("finally")
-			expect(merged instanceof TerminalProcess).toBe(true)
-
-			await expect(merged).resolves.toBeUndefined()
+		it("should preserve colors while removing cursor codes", () => {
+			const input = "\x1B[31mred\x1B[1B\x1B[32mgreen"
+			const result = terminalProcess.stripCursorSequences(input)
+			expect(result).toBe("\x1B[31mred\x1B[32mgreen")
 		})
 	})
 })

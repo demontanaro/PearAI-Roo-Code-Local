@@ -1,7 +1,11 @@
-import { ApiHandlerOptions, ModelInfo, VertexModelId, vertexDefaultModelId, vertexModels } from "../../shared/api"
+import { type ModelInfo, type VertexModelId, vertexDefaultModelId, vertexModels } from "@roo-code/types"
 
-import { SingleCompletionHandler } from "../index"
+import type { ApiHandlerOptions } from "../../shared/api"
+
+import { getModelParams } from "../transform/model-params"
+
 import { GeminiHandler } from "./gemini"
+import { SingleCompletionHandler } from "../index"
 
 export class VertexHandler extends GeminiHandler implements SingleCompletionHandler {
 	constructor(options: ApiHandlerOptions) {
@@ -9,31 +13,28 @@ export class VertexHandler extends GeminiHandler implements SingleCompletionHand
 	}
 
 	override getModel() {
-		let id = this.options.apiModelId ?? vertexDefaultModelId
-		let info: ModelInfo = vertexModels[id as VertexModelId]
+		const modelId = this.options.apiModelId
+		let id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
+		let info: ModelInfo = vertexModels[id]
+		const params = getModelParams({
+			format: "gemini",
+			modelId: id,
+			model: info,
+			settings: this.options,
+			defaultTemperature: info.defaultTemperature ?? 1,
+		})
 
-		if (id?.endsWith(":thinking")) {
-			id = id.slice(0, -":thinking".length) as VertexModelId
-
-			if (vertexModels[id as VertexModelId]) {
-				info = vertexModels[id as VertexModelId]
-
-				return {
-					id,
-					info,
-					thinkingConfig: this.options.modelMaxThinkingTokens
-						? { thinkingBudget: this.options.modelMaxThinkingTokens }
-						: undefined,
-					maxOutputTokens: this.options.modelMaxTokens ?? info.maxTokens ?? undefined,
-				}
-			}
+		// Vertex Gemini models perform better with the edit tool instead of apply_diff.
+		info = {
+			...info,
+			excludedTools: [...new Set([...(info.excludedTools || []), "apply_diff"])],
+			includedTools: [...new Set([...(info.includedTools || []), "edit"])],
 		}
 
-		if (!info) {
-			id = vertexDefaultModelId
-			info = vertexModels[vertexDefaultModelId]
-		}
-
-		return { id, info }
+		// The `:thinking` suffix indicates that the model is a "Hybrid"
+		// reasoning model and that reasoning is required to be enabled.
+		// The actual model ID honored by Gemini's API does not have this
+		// suffix.
+		return { id: id.endsWith(":thinking") ? id.replace(":thinking", "") : id, info, ...params }
 	}
 }
