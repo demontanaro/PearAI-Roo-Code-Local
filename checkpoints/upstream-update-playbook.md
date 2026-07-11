@@ -4,19 +4,25 @@
 
 Keep the fork aligned with upstream Roo Code while preserving the protected local LLM subsystem and minimizing technical debt.
 
+## Remote Map
+
+- `roo-official` points to the official Roo Code repository and is read-only for source comparison.
+- `upstream` points to the PearAI fork (`trypear/PearAI-Roo-Code`) and is the only publish target.
+- `origin` in this workspace is a local mirror and must not be used for release or branch publication.
+
 ## Merge Strategy
 
 1. Create a dedicated upgrade branch from fork main:
     - `git checkout -b upgrade/roo-vX.Y.Z`
-2. Add/update upstream remote and fetch tags:
-    - `git remote add upstream https://github.com/RooCodeInc/Roo-Code.git` (once)
-    - `git fetch upstream --tags`
-3. Merge upstream tag into the upgrade branch:
-    - `git merge --no-ff upstream/vX.Y.Z`
+2. Add/update the official Roo remote and fetch tags:
+    - `git remote add roo-official https://github.com/RooCodeInc/Roo-Code.git` (once)
+    - `git fetch roo-official --tags`
+3. Merge the official Roo tag into the upgrade branch:
+    - `git merge --no-ff roo-official/vX.Y.Z`
 4. Conflict policy:
-    - Default: upstream-first.
+    - Default: official upstream-first.
     - Exception: preserve protected local subsystem behavior (local OpenAI-compatible flow, PearAI-specific model discovery/UX hooks).
-    - If a protected file has major API drift, rebase to upstream first, then re-apply local logic as a minimal patch.
+    - If a protected file has major API drift, rebase to the official Roo implementation first, then re-apply local logic as a minimal patch.
 
 ## Required Validation Checklist
 
@@ -48,3 +54,4 @@ Run all checks with Node `20.19.2`.
 - Prefer wrappers/adapters over copying old provider implementations.
 - Remove dead/legacy imports and paths during each upgrade pass.
 - Keep a short "delta log" in `checkpoints/` describing what was preserved locally and why.
+- Publish only to the PearAI fork remote; never create branches, tags, or releases on the official Roo repository.
