@@ -7,8 +7,8 @@ Keep the fork aligned with upstream Roo Code while preserving the protected loca
 ## Remote Map
 
 - `roo-official` points to the official Roo Code repository and is read-only for source comparison.
-- `upstream` points to the PearAI fork (`trypear/PearAI-Roo-Code`) and is the only publish target.
-- `origin` in this workspace is a local mirror and must not be used for release or branch publication.
+- `upstream` points to the PearAI fork source (`trypear/PearAI-Roo-Code`) and is the main fork used for comparison.
+- `origin` points to the publish target in `demontanaro/PearAI-Roo-Code-Local` and is the only remote used for branch/release publication.
 
 ## Merge Strategy
 
@@ -54,4 +54,4 @@ Run all checks with Node `20.19.2`.
 - Prefer wrappers/adapters over copying old provider implementations.
 - Remove dead/legacy imports and paths during each upgrade pass.
 - Keep a short "delta log" in `checkpoints/` describing what was preserved locally and why.
-- Publish only to the PearAI fork remote; never create branches, tags, or releases on the official Roo repository.
+- Publish only to the demontanaro remote; never create branches, tags, or releases on the official Roo repository.
