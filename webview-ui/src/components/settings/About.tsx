@@ -16,10 +16,12 @@ import { SearchableSetting } from "./SearchableSetting"
 type AboutProps = HTMLAttributes<HTMLDivElement> & {
 	debug?: boolean
 	setDebug?: (debug: boolean) => void
+	version?: string
 }
 
-export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
+export const About = ({ debug, setDebug, version, className, ...props }: AboutProps) => {
 	const { t } = useAppTranslation()
+	const displayVersion = version || Package.version
 
 	return (
 		<div className={cn("flex flex-col gap-2", className)} {...props}>
@@ -28,8 +30,8 @@ export const About = ({ debug, setDebug, className, ...props }: AboutProps) => {
 			<Section>
 				<p>
 					{Package.sha
-						? `Version: ${Package.version} (${Package.sha.slice(0, 8)})`
-						: `Version: ${Package.version}`}
+						? `Version: ${displayVersion} (${Package.sha.slice(0, 8)})`
+						: `Version: ${displayVersion}`}
 				</p>
 			</Section>
 

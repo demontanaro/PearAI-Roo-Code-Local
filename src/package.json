@@ -1,10 +1,10 @@
 {
-	"name": "roo-cline",
+	"name": "pearai-roo-cline",
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
-	"publisher": "RooVeterinaryInc",
+	"publisher": "PearAI",
 	"version": "3.54.0",
-	"icon": "assets/icons/icon.png",
+	"icon": "assets/icons/pear.png",
 	"galleryBanner": {
 		"color": "#617A91",
 		"theme": "dark"
@@ -14,13 +14,13 @@
 		"node": "20.19.2"
 	},
 	"author": {
-		"name": "Roo Code"
+		"name": "PearAI"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/RooCodeInc/Roo-Code"
+		"url": "https://github.com/demontanaro/PearAI-Roo-Code-Local"
 	},
-	"homepage": "https://roocodeinc.github.io/Roo-Code/",
+	"homepage": "https://github.com/demontanaro/PearAI-Roo-Code-Local",
 	"categories": [
 		"AI",
 		"Chat",
@@ -56,7 +56,7 @@
 				{
 					"id": "roo-cline-ActivityBar",
 					"title": "%views.activitybar.title%",
-					"icon": "assets/icons/icon.svg"
+					"icon": "assets/icons/pear.png"
 				}
 			]
 		},
@@ -340,11 +340,6 @@
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.enableCodeActions.description%"
-				},
-				"roo-cline.autoImportSettingsPath": {
-					"type": "string",
-					"default": "",
-					"description": "%settings.autoImportSettingsPath.description%"
 				},
 				"roo-cline.maximumIndexedFilesForFileSearch": {
 					"type": "number",

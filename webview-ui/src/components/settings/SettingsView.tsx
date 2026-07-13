@@ -124,7 +124,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const { t } = useAppTranslation()
 
 	const extensionState = useExtensionState()
-	const { currentApiConfigName, listApiConfigMeta, uriScheme, settingsImportedAt } = extensionState
+	const { currentApiConfigName, listApiConfigMeta, uriScheme, settingsImportedAt, version } = extensionState
 
 	const [isDiscardDialogShow, setDiscardDialogShow] = useState(false)
 	const [isChangeDetected, setChangeDetected] = useState(false)
@@ -905,7 +905,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						)}
 
 						{/* About Section */}
-						{renderTab === "about" && <About debug={cachedState.debug} setDebug={setDebug} />}
+						{renderTab === "about" && (
+							<About debug={cachedState.debug} setDebug={setDebug} version={version} />
+						)}
 					</SearchIndexProvider>
 				</TabContent>
 			</div>

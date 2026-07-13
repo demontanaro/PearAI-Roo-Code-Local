@@ -179,7 +179,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Auto-import configuration if specified in settings.
 	try {
-		await autoImportSettings(outputChannel, {
+		await autoImportSettings(outputChannel, context, {
 			providerSettingsManager: provider.providerSettingsManager,
 			contextProxy: provider.contextProxy,
 			customModesManager: provider.customModesManager,
