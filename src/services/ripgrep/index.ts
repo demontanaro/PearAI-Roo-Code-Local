@@ -51,6 +51,23 @@ rel/path/to/helper.ts
 const isWindows = process.platform.startsWith("win")
 const binName = isWindows ? "rg.exe" : "rg"
 
+function getSystemRipgrepPath(): string | undefined {
+	const lookup = isWindows
+		? childProcess.spawnSync("where", [binName], { encoding: "utf8" })
+		: childProcess.spawnSync("which", ["rg"], { encoding: "utf8" })
+
+	if (lookup.status !== 0 || !lookup.stdout) {
+		return undefined
+	}
+
+	const firstLine = lookup.stdout
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find((line) => line.length > 0)
+
+	return firstLine
+}
+
 interface SearchFileResult {
 	file: string
 	searchResults: SearchResult[]
@@ -92,7 +109,8 @@ export async function getBinPath(vscodeAppRoot: string): Promise<string | undefi
 		(await checkPath("node_modules/@vscode/ripgrep/bin/")) ||
 		(await checkPath("node_modules/vscode-ripgrep/bin")) ||
 		(await checkPath("node_modules.asar.unpacked/vscode-ripgrep/bin/")) ||
-		(await checkPath("node_modules.asar.unpacked/@vscode/ripgrep/bin/"))
+		(await checkPath("node_modules.asar.unpacked/@vscode/ripgrep/bin/")) ||
+		getSystemRipgrepPath()
 	)
 }
 
